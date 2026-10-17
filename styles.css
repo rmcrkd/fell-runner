@@ -20,6 +20,11 @@
   box-sizing: border-box;
 }
 
+/* Author styles like `display: flex` would otherwise override the attribute */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -286,6 +291,105 @@ body:not(.playing) #game {
   }
 }
 
+.wind-shelter {
+  font-size: 0.85em;
+  color: #9df0ac;
+}
+
+/* Place names along the route, as you reach them */
+.place {
+  left: 50%;
+  top: max(14px, env(safe-area-inset-top));
+  transform: translateX(-50%);
+  font-size: 1.1em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  padding: 0.1em 0.8em;
+  border-radius: 999px;
+  background: rgba(10, 16, 22, 0.55);
+}
+
+/* Elevation profile of the route, bottom centre */
+.route-map {
+  position: absolute;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(34vw, calc(220px * var(--hud)));
+  height: calc(40px * var(--hud));
+  overflow: visible;
+  filter: drop-shadow(0 1px 0 #000);
+}
+
+.rm-ground {
+  fill: rgba(10, 16, 22, 0.55);
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.rm-cairn {
+  fill: none;
+  stroke: #ffe27a;
+  stroke-width: 1.2;
+}
+
+.rm-cairn.reached {
+  fill: #ffe27a;
+}
+
+.rm-summit {
+  fill: #ffd23f;
+  stroke: #ffd23f;
+  stroke-width: 1;
+}
+
+.rm-you {
+  fill: var(--accent);
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.rm-ghost {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.2;
+}
+
+body.contrast .rm-ground {
+  fill: #000;
+  stroke: #fff;
+}
+
+.replay-stop {
+  position: absolute;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  right: max(16px, env(safe-area-inset-right));
+  background: rgba(10, 16, 22, 0.85);
+}
+
+/* In portrait the game is a letterbox: put the map in the space below it,
+   unless the screen is too short to fit it above the touch controls */
+@media (orientation: portrait) {
+  .route-map {
+    bottom: auto;
+    top: calc(50vh + 100vw * 9 / 32 + 4.5em);
+    width: min(80vw, calc(320px * var(--hud)));
+  }
+}
+
+@media (orientation: portrait) and (max-height: 760px) {
+  body.touching .route-map {
+    display: none;
+  }
+}
+
+.disclaimer {
+  margin: 0.7em 0 0 !important;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .caption {
   left: 50%;
   bottom: 12%;
@@ -307,6 +411,11 @@ body:not(.playing) #game {
   -webkit-user-select: none;
 }
 
+#touch {
+  --pad: clamp(44px, 14vw, 56px);
+  --act: clamp(56px, 19vw, 72px);
+}
+
 #touch button {
   pointer-events: auto;
   touch-action: none;
@@ -315,8 +424,8 @@ body:not(.playing) #game {
   color: #fff;
   font: 700 15px system-ui, sans-serif;
   border-radius: 14px;
-  min-width: 56px;
-  min-height: 56px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 #touch button.on {
@@ -328,7 +437,7 @@ body:not(.playing) #game {
   left: max(16px, env(safe-area-inset-left));
   bottom: max(16px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template: 'a b c' 56px 'd e f' 56px 'g h i' 56px / 56px 56px 56px;
+  grid-template: 'a b c' var(--pad) 'd e f' var(--pad) 'g h i' var(--pad) / var(--pad) var(--pad) var(--pad);
   gap: 4px;
 }
 
@@ -342,13 +451,13 @@ body:not(.playing) #game {
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(2, 72px);
+  grid-template-columns: repeat(2, var(--act));
   gap: 8px;
 }
 
 #touch .acts [data-touch='jump'] {
   grid-column: 2;
-  min-height: 72px;
+  min-height: var(--act);
 }
 
 #touch .acts [data-touch='grab'] {

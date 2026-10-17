@@ -25,6 +25,7 @@
           <div class="hud-meta">
             <span id="hud-deaths" title="Falls">✕ 0</span>
             <span id="hud-assist" class="badge" hidden>Assist</span>
+            <span id="hud-replay" class="badge" hidden>Replay</span>
           </div>
         </div>
         <div class="hud-tr">
@@ -35,6 +36,7 @@
             <div>
               <div id="hud-wind-word" class="wind-word">Calm</div>
               <div id="hud-wind-detail" class="wind-detail"></div>
+              <div id="hud-wind-shelter" class="wind-shelter" hidden>⛰ Sheltered</div>
             </div>
           </div>
           <div id="hud-gust" class="gust" hidden>
@@ -46,10 +48,14 @@
           <div id="hud-dashes" class="dashes"></div>
           <div id="hud-stamina" class="stamina" hidden><span id="hud-stamina-fill"></span></div>
         </div>
+        <svg id="hud-route" class="route-map" aria-hidden="true"></svg>
+        <div id="hud-place" class="place" hidden></div>
         <div id="hud-banner" class="banner" hidden></div>
         <div id="hud-caption" class="caption" hidden></div>
         <div class="rotate-hint">Turn your phone sideways for a bigger view</div>
       </div>
+
+      <button type="button" id="replay-stop" class="replay-stop" hidden>■ Stop replay</button>
 
       <div id="touch" hidden>
         <div class="pad">
@@ -63,7 +69,7 @@
           <button type="button" data-touch="dash">Dash</button>
           <button type="button" data-touch="jump">Jump</button>
         </div>
-        <button type="button" class="touch-pause" data-touch="pause" aria-label="Pause">II</button>
+        <button type="button" class="touch-pause" data-touch="pause"><span aria-hidden="true">❚❚</span><span class="sr-only">Pause</span></button>
       </div>
     </div>
 
@@ -82,6 +88,7 @@
         <div class="donate-box">
           <p>Fell Runner is free. If you enjoy it, please support the volunteers who rescue real fell runners.</p>
           <a class="button-link donate" href="https://penrithmrt.org.uk/donate" target="_blank" rel="noopener">♥ Donate to Penrith Mountain Rescue Team<span class="sr-only"> (opens in a new tab)</span></a>
+          <p class="disclaimer">An unofficial fan project, not affiliated with or endorsed by Penrith Mountain Rescue Team.</p>
         </div>
       </section>
 
@@ -115,6 +122,7 @@
           </fieldset>
           <div class="row-end">
             <label class="check"><input type="checkbox" id="setup-ghost" /> Race my best ghost</label>
+            <button type="button" id="setup-replay" hidden>Watch best run</button>
             <button type="button" data-back>Back</button>
             <button type="submit" class="primary">Start run</button>
           </div>
@@ -153,12 +161,14 @@
         <nav class="menu horizontal" aria-label="After the run">
           <button type="button" class="primary" id="results-retry">Run it again</button>
           <button type="button" id="results-new">New weather</button>
+          <button type="button" id="results-replay">Watch this run</button>
           <button type="button" data-go="setup">Change fell or vest</button>
           <button type="button" data-go="title">Main menu</button>
         </nav>
         <div class="donate-box">
           <p>On the real fells, rescue comes from unpaid volunteers. Celebrate your summit by supporting them.</p>
-          <a class="button-link donate" href="https://penrithmrt.org.uk/donate" target="_blank" rel="noopener">♥ Donate to Penrith MRT<span class="sr-only"> (opens in a new tab)</span></a>
+          <a class="button-link donate" href="https://penrithmrt.org.uk/donate" target="_blank" rel="noopener">♥ Donate to Penrith Mountain Rescue Team<span class="sr-only"> (opens in a new tab)</span></a>
+          <p class="disclaimer">An unofficial fan project, not affiliated with or endorsed by Penrith Mountain Rescue Team.</p>
         </div>
       </section>
 
@@ -176,12 +186,12 @@
               </div>
             </div>
             <table class="bindings">
-              <caption class="sr-only">Keyboard controls</caption>
-              <thead><tr><th scope="col">Action</th><th scope="col">Keys</th><th scope="col"><span class="sr-only">Change</span></th></tr></thead>
+              <caption class="sr-only">Keyboard and gamepad controls</caption>
+              <thead><tr><th scope="col">Action</th><th scope="col">Keyboard</th><th scope="col">Gamepad</th></tr></thead>
               <tbody id="bindings-body"></tbody>
             </table>
-            <p class="help">Gamepads work out of the box: stick or d-pad to move, A to jump, X or B to dash, any bumper or trigger to grab, Start to pause.</p>
-            <button type="button" id="bindings-reset">Reset keys to defaults</button>
+            <p class="help">Gamepads work out of the box: stick or d-pad to move, A to jump, X or B to dash, any bumper or trigger to grab, Start to pause, Y to read out your status. Buttons are named for an Xbox-style pad.</p>
+            <button type="button" id="bindings-reset">Reset keys and buttons to defaults</button>
           </fieldset>
 
           <fieldset>
@@ -239,6 +249,7 @@
             </div>
             <label class="check"><input type="checkbox" name="gustWarnings" /> Gust warnings</label>
             <label class="check"><input type="checkbox" name="showSplits" /> Show splits at cairns</label>
+            <label class="check"><input type="checkbox" name="showRouteMap" /> Show route map (where you and your ghost are on the fell)</label>
             <label class="check"><input type="checkbox" name="showGhost" /> Show best-run ghost</label>
           </fieldset>
 
@@ -257,7 +268,8 @@
               <input type="range" id="set-amb" name="ambienceVolume" min="0" max="1" step="0.1" />
             </div>
             <label class="check"><input type="checkbox" name="captions" /> Sound captions</label>
-            <label class="check"><input type="checkbox" name="announce" /> Screen reader announcements (checkpoints, results)</label>
+            <label class="check"><input type="checkbox" name="announce" /> Screen reader announcements (places, cairns, results)</label>
+            <p class="help">Press <kbd>I</kbd> (or <kbd>Y</kbd> on a gamepad) during a run to hear your time, where you are, the wind, and your dashes and stamina.</p>
           </fieldset>
 
           <fieldset>
@@ -285,6 +297,7 @@
             <tr><th scope="row">Grab and climb</th><td>Z, L or Left Shift</td><td>Bumpers or triggers</td></tr>
             <tr><th scope="row">Restart</th><td>R</td><td>Back / Select</td></tr>
             <tr><th scope="row">Pause</th><td>Esc or P</td><td>Start</td></tr>
+            <tr><th scope="row">Read out status</th><td>I</td><td>Y</td></tr>
           </tbody>
         </table>
         <h3>Moving on the fells</h3>
@@ -293,19 +306,22 @@
           <li><strong>Wall jump</strong> by pressing jump next to a crag.</li>
           <li><strong>Climb</strong> by holding grab against a crag. Climbing uses stamina, which refills when you stand on the ground. A sweat drop means your arms are nearly done.</li>
           <li><strong>Dash</strong> in any of eight directions. Your buff turns <span class="swatch orange">orange</span> when a dash is ready and <span class="swatch blue">blue</span> once it's spent. Touch the ground to recharge.</li>
-          <li><strong>Kendal mint cake</strong> refills your dash and stamina in mid-air.</li>
+          <li><strong>Kendal mint cake</strong> refills your dash and stamina in mid-air. On Scafell Pike, some gaps can only be crossed by dashing to a mint cake and dashing again.</li>
+          <li><strong>Loose rock</strong> (blocky brown slate) cracks as soon as you stand on it or grab it, and falls away a moment later. Keep moving. It settles back after a couple of seconds.</li>
           <li><strong>Cairns</strong> are checkpoints. Sharp rocks, tarns and big drops send you back to the last one.</li>
         </ul>
         <h3>Weather</h3>
         <ul>
-          <li><strong>Wind</strong> pushes you around, especially in the air. Watch the wind gauge, streaks and your buff. The <em>gust warning</em> gives about a second's notice.</li>
+          <li><strong>Wind</strong> pushes you around, especially in the air. It's gentler down in the valley and full strength on the tops. Watch the wind gauge, streaks and your buff. The <em>gust warning</em> gives about a second's notice.</li>
+          <li><strong>Shelter:</strong> crags, boulders and walls on the windward side break the wind. The gauge says <em>Sheltered</em> when you're in their lee.</li>
           <li><strong>Rain and snow</strong> make the rock greasy: you'll slide further when stopping or turning.</li>
           <li><strong>Clag</strong> (hill fog) hides the way ahead. You can limit it in Settings.</li>
         </ul>
         <h3>Speedrunning</h3>
         <ul>
           <li>Every run's weather comes from its <strong>seed</strong>. The same seed gives the same gusts at the same moments, so share one with friends for a fair race.</li>
-          <li>Your fastest run on each fell and weather setting is saved with a <strong>ghost</strong> to race. Splits at each cairn show whether you're ahead.</li>
+          <li>Your fastest run on each fell and weather setting is saved with a <strong>ghost</strong> to race. Splits at each cairn show whether you're ahead, and the route map at the bottom of the screen shows you (●) and your ghost (○).</li>
+          <li><strong>Watch best run</strong> replays your ghost in the weather it ran in. You can also watch any run again from the results screen.</li>
           <li><strong>Super jump:</strong> jump during a sideways dash on the ground. <strong>Hyper:</strong> dash down-diagonally into the ground, then jump. <strong>Wall bounce:</strong> dash upwards beside a crag, then jump.</li>
         </ul>
         <div class="row-end"><button type="button" class="primary" data-back>Back</button></div>
@@ -335,7 +351,7 @@
         <h2 id="credits-h" tabindex="-1">Credits</h2>
         <dl class="credits">
           <dt>Created by</dt>
-          <dd>Ryan McCrickerd, built with <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code<span class="sr-only"> (opens in a new tab)</span></a></dd>
+          <dd>Ryan McCrickerd, with AI assistance from Claude by Anthropic, through <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code<span class="sr-only"> (opens in a new tab)</span></a></dd>
           <dt>Movement</dt>
           <dd>Modelled on <a href="https://www.celestegame.com/" target="_blank" rel="noopener">Celeste<span class="sr-only"> (opens in a new tab)</span></a> by Maddy Thorson and Noel Berry, whose <a href="https://github.com/NoelFB/Celeste" target="_blank" rel="noopener">published player controller<span class="sr-only"> (opens in a new tab)</span></a> taught a generation how platformers should feel. Assist mode follows Celeste's lead too.</dd>
           <dt>The real heroes</dt>
@@ -345,7 +361,9 @@
           <dt>Forecasts</dt>
           <dd>The Lake District National Park's Weatherline and the Mountain Weather Information Service, recommended for real days out.</dd>
           <dt>Algorithms</dt>
-          <dd>Mulberry32 random numbers by Tommy Ettinger; FNV-1a hashing by Glenn Fowler, Landon Curt Noll and Kiem-Phong Vo.</dd>
+          <dd>Mulberry32 random numbers by Tommy Ettinger; FNV-1a hashing by Glenn Fowler, Landon Curt Noll and Kiem-Phong Vo; and A* search by Peter Hart, Nils Nilsson and Bertram Raphael, which the level checker uses to time reference routes.</dd>
+          <dt>Development tools</dt>
+          <dd>Accessibility audited with <a href="https://github.com/dequelabs/axe-core" target="_blank" rel="noopener">axe-core<span class="sr-only"> (opens in a new tab)</span></a> by Deque; screenshots captured with <a href="https://pptr.dev/" target="_blank" rel="noopener">Puppeteer<span class="sr-only"> (opens in a new tab)</span></a>; the README GIF encoded with <a href="https://github.com/mattdesl/gifenc" target="_blank" rel="noopener">gifenc<span class="sr-only"> (opens in a new tab)</span></a> by Matt DesLauriers. None of them ship with the game.</dd>
           <dt>Kendal mint cake</dt>
           <dd>Fuel of fell runners and mountaineers for over a century.</dd>
         </dl>

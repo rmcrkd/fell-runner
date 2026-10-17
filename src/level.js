@@ -17,7 +17,7 @@ export const LOOSE_RESPAWN = 2;
 
 // Wind strength at the valley floor, as a fraction of the full force on the
 // tops, and how much the lee of a crag or wall takes off it.
-export const EXPOSURE_VALLEY = 0.5;
+export const EXPOSURE_VALLEY = 0.65;
 export const LEE_SHELTER = 0.7;
 const LEE_REACH = 12;
 

@@ -24,6 +24,12 @@ for (const level of LEVELS) {
   });
 }
 
+test('each fell has a storage key that changes when its map does', async () => {
+  const { hashString } = await import('../src/rng.js');
+  assert.equal(new Set(LEVELS.map((l) => l.key)).size, LEVELS.length);
+  for (const l of LEVELS) assert.equal(l.key, `${l.id}.${hashString(l.def.map).toString(36)}`);
+});
+
 test('levels are listed in order of difficulty', () => {
   assert.deepEqual(
     LEVEL_DEFS.map((d) => d.grade),

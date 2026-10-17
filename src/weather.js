@@ -91,19 +91,23 @@ export function createWeather(seed, difficulty, levelId = '') {
 
 const COMPASS = { 1: 'westerly', '-1': 'easterly' };
 
-export function windWord(speed) {
-  const s = Math.abs(speed);
-  if (s < 4) return 'Calm';
-  if (s < 14) return 'Light breeze';
-  if (s < 26) return 'Breezy';
-  if (s < 40) return 'Strong wind';
-  if (s < 56) return 'Gale';
-  return 'Severe gale';
-}
+// Drift speeds are game units. For display they map to plausible fell-top
+// wind speeds: an Extreme storm blows 30 to 50 mph with gusts towards 90,
+// a Normal day 10 to 30 mph.
+export const MPH_PER_UNIT = 1.3;
+export const toMph = (speed) => Math.round(Math.abs(speed) * MPH_PER_UNIT);
 
-// Drift speeds are game units. This maps them to plausible fell-top wind
-// speeds for display only.
-export const toMph = (speed) => Math.round(Math.abs(speed) * 0.9);
+// Words for wind strength, roughly following the Beaufort scale.
+export function windWord(speed) {
+  const mph = Math.abs(speed) * MPH_PER_UNIT;
+  if (mph < 4) return 'Calm';
+  if (mph < 13) return 'Light breeze';
+  if (mph < 25) return 'Breezy';
+  if (mph < 39) return 'Strong wind';
+  if (mph < 55) return 'Gale';
+  if (mph < 73) return 'Severe gale';
+  return 'Storm force';
+}
 
 function describeWeather({ base, dir, precip, precipType, fog, calm }) {
   if (calm) return 'Still and clear';

@@ -1,0 +1,17 @@
+{
+  "name": "fell-runner-browser-tools",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only browser tooling: accessibility audit, keyboard walkthrough, README captures. Never shipped with the game.",
+  "scripts": {
+    "audit": "node audit.js",
+    "keyboard": "node keyboard.js",
+    "capture": "node capture.js"
+  },
+  "devDependencies": {
+    "axe-core": "^4.10.0",
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
+    "puppeteer-core": "^23.0.0"
+  }
+}

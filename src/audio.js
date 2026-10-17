@@ -151,6 +151,8 @@ export class Audio {
       case 'died':
         this.tone({ freq: 440, to: 80, dur: 0.35, vol: 0.1, type: 'sawtooth' });
         return this.burst({ dur: 0.3, freq: 600, vol: 0.35, type: 'lowpass' });
+      case 'crumble':
+        return this.burst({ dur: 0.25, freq: 500, vol: 0.3, type: 'lowpass' });
       case 'bounce':
         return this.tone({ freq: 200, to: 600, dur: 0.2, vol: 0.08, type: 'triangle' });
       case 'gust':
@@ -175,5 +177,6 @@ export const CAPTIONS = {
   checkpoint: 'cairn reached',
   tired: 'arms tiring',
   bounce: 'boing',
+  crumble: 'loose rock gives way',
   finish: 'summit!',
 };

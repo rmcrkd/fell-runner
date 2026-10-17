@@ -1,5 +1,5 @@
 import { TILE, VIEW_H, VIEW_W } from './config.js';
-import { T } from './level.js';
+import { LOOSE_CRUMBLE, T } from './level.js';
 import { ST } from './player.js';
 import { hashString, mulberry32 } from './rng.js';
 
@@ -46,6 +46,11 @@ const PALETTES = {
     water: '#2c5c82',
     waterLight: '#79b0d6',
     lake: '#a9c6db',
+    loose: '#8b7d6b',
+    looseLight: '#b3a48f',
+    looseDark: '#4a4036',
+    fleece: '#5b524c',
+    fleeceLight: '#7d736b',
     skin: '#f0c39c',
     shorts: '#23262b',
     shoes: '#e2553a',
@@ -74,6 +79,11 @@ const PALETTES = {
     water: '#00b7ff',
     waterLight: '#9fe6ff',
     lake: '#1f2a35',
+    loose: '#ff8c42',
+    looseLight: '#ffc59a',
+    looseDark: '#000000',
+    fleece: '#9aa0a6',
+    fleeceLight: '#c8ccd0',
     skin: '#f6d2b0',
     shorts: '#101010',
     shoes: '#ff5a36',
@@ -114,6 +124,7 @@ export class Renderer {
     this.trails = [];
     this.weatherParticles = [];
     this.streaks = [];
+    this.flock = new Map();
   }
 
   refreshPalette() {
@@ -171,6 +182,7 @@ export class Renderer {
           g.fillRect(x + 6, y + 3, 1, 1);
         } else if (k === T.SPIKE) {
           this.drawSpikeTile(g, x, y, pal, tx);
+
         } else if (k === T.WATER) {
           const surface = level.kind(tx, ty - 1) !== T.WATER;
           g.fillStyle = pal.water;
@@ -240,7 +252,11 @@ export class Renderer {
     if (!same(1, 0)) g.fillRect(x + TILE - 1, y, 1, TILE);
     if (!same(0, 1) && level.kind(tx, ty + 1) !== T.SOLID) g.fillRect(x, y + TILE - 1, TILE, 1);
     if (hash2(tx, ty) > 0.55) g.fillRect(x + 2, y + 5, 3, 1);
+    // Tall stacks read as separate blocks piled on each other
+    const seam = same(0, -1) && Math.floor(hash2(Math.floor(tx / 2), 7) * 3 + ty) % 3 === 0;
+    if (seam) g.fillRect(x, y, TILE, 1);
     g.fillStyle = pal.boulderLight;
+    if (seam) g.fillRect(x + 1, y + 1, TILE - 2, 1);
     if (!same(-1, 0)) g.fillRect(x, y, 1, TILE);
     if (!same(0, -1)) {
       g.fillRect(x, y, TILE, 1);
@@ -377,18 +393,22 @@ export class Renderer {
     // Terrain
     ctx.drawImage(this.terrain, camX, camY, VIEW_W, VIEW_H, 0, 0, VIEW_W, VIEW_H);
     this.drawWaterShimmer(ctx, camX, camY, time);
+    this.drawLoose(ctx, run, camX, camY, time);
+    this.drawSheep(ctx, run, camX, camY, time);
     this.drawEntities(ctx, run, camX, camY, time);
 
     // Ghost
+    // In a replay the recorded run is the star, drawn in full colour
     const ghost = run?.ghostPose();
-    if (ghost && s.showGhost && !ghost.dead) {
-      ctx.globalAlpha = 0.45;
+    if (ghost && (s.showGhost || run.replay) && !ghost.dead) {
+      ctx.globalAlpha = run.replay ? 1 : 0.45;
       this.drawRunner(ctx, ghost.x - camX, ghost.y - camY, {
         facing: ghost.facing,
         state: ghost.climb ? 'climb' : ghost.dash ? 'dash' : ghost.air ? 'air' : 'run',
         phase: ghost.runDistance,
         moving: true,
-        ghost: true,
+        ghost: !run.replay,
+        time,
       });
       ctx.globalAlpha = 1;
     }
@@ -396,7 +416,7 @@ export class Renderer {
     this.drawFog(ctx, time, wind, camY);
 
     // Player
-    if (run) {
+    if (run?.player) {
       const p = run.player;
       if (p.state === ST.DASH && !s.reduceMotion) this.trails.push({ x: p.x, y: p.y, facing: p.facing, life: 0.25 });
       for (const t of this.trails) {
@@ -500,6 +520,98 @@ export class Renderer {
     ctx.fill();
   }
 
+  // Loose rock: a blocky slab of slate with cracks that widen as it goes.
+  // It shudders while crumbling (unless motion is reduced) and leaves a
+  // faint outline while it's gone, so you can see where it will settle back.
+  drawLoose(ctx, run, camX, camY, time) {
+    const lvl = this.level;
+    if (!lvl.loose.length) return;
+    const pal = this.pal;
+    const state = run?.player?.loose;
+    lvl.loose.forEach((b, i) => {
+      const x = b.tx * TILE - camX;
+      const y = b.ty * TILE - camY;
+      if (x < -8 || x > VIEW_W || y < -8 || y > VIEW_H) return;
+      const v = state ? state[i] : 0;
+      if (v < 0) {
+        ctx.fillStyle = pal.looseLight;
+        ctx.globalAlpha = 0.45;
+        for (let k = 0; k < 8; k += 2) {
+          ctx.fillRect(x + k, y, 1, 1);
+          ctx.fillRect(x + k + 1, y + 7, 1, 1);
+          ctx.fillRect(x, y + k + 1, 1, 1);
+          ctx.fillRect(x + 7, y + k, 1, 1);
+        }
+        ctx.globalAlpha = 1;
+        return;
+      }
+      const progress = v > 0 ? 1 - v / LOOSE_CRUMBLE : 0;
+      const jx = v > 0 && !this.settings.reduceMotion ? Math.round(Math.sin(time * 70 + i) * progress) : 0;
+      const jy = v > 0 && !this.settings.reduceMotion ? Math.round(progress * 2) : 0;
+      const px = x + jx;
+      const py = y + jy;
+      ctx.fillStyle = pal.looseDark;
+      ctx.fillRect(px, py, 8, 8);
+      ctx.fillStyle = pal.loose;
+      ctx.fillRect(px + 1, py + 1, 6, 6);
+      ctx.fillStyle = pal.looseLight;
+      ctx.fillRect(px + 1, py + 1, 6, 1);
+      ctx.fillRect(px + 1, py + 4, 3, 1);
+      ctx.fillStyle = pal.looseDark;
+      ctx.fillRect(px + 4, py + 4, 1, 3);
+      if (progress > 0) {
+        // Cracks: shape, not just colour, shows the rock is going
+        ctx.fillRect(px + 2, py + 1, 1, 3);
+        ctx.fillRect(px + 3, py + 3, 1, 1);
+        if (progress > 0.45) {
+          ctx.fillRect(px + 5, py + 1, 1, 2);
+          ctx.fillRect(px + 6, py + 3, 1, 2);
+          ctx.fillRect(px + 1, py + 5, 2, 1);
+        }
+      }
+    });
+  }
+
+  // Herdwick sheep graze in the valleys. They're scenery, but they do look
+  // up, and skitter off if you come charging past.
+  drawSheep(ctx, run, camX, camY, time) {
+    const lvl = this.level;
+    if (!lvl.sheep.length) return;
+    const pal = this.pal;
+    const p = run?.player;
+    this.flock ??= new Map();
+    lvl.sheep.forEach((s, i) => {
+      let st = this.flock.get(i);
+      if (!st) this.flock.set(i, (st = { dx: 0, hop: 0, facing: hash2(i, 41) > 0.5 ? 1 : -1 }));
+      const near = p && Math.abs(p.x + 4 - (s.x + 4 + st.dx)) < 28 && Math.abs(p.y + p.h - s.y) < 24;
+      if (near && st.hop <= 0 && Math.abs(st.dx) < 20) {
+        st.facing = p.x < s.x + st.dx ? 1 : -1;
+        st.hop = 0.35;
+      }
+      if (st.hop > 0) {
+        st.hop -= 1 / 60;
+        if (!this.settings.reduceMotion) st.dx += st.facing * 1.2;
+      }
+      const x = Math.round(s.x + st.dx - camX);
+      if (x < -12 || x > VIEW_W + 12) return;
+      const lift = st.hop > 0 && !this.settings.reduceMotion ? Math.round(Math.sin((st.hop / 0.35) * Math.PI) * 3) : 0;
+      const y = s.y - camY - lift;
+      const graze = this.settings.reduceMotion ? 0 : Math.floor(time * 0.7 + i * 1.3) % 3 === 0 ? 1 : 0;
+      const f = st.facing;
+      const px = (cx, cy, w, h, c) => {
+        ctx.fillStyle = c;
+        ctx.fillRect(f === 1 ? x + cx : x + 10 - cx - w, y + cy, w, h);
+      };
+      px(1, -7, 7, 4, pal.fleece);
+      px(2, -8, 5, 1, pal.fleeceLight);
+      px(2, -3, 1, 3, '#1d1d1d');
+      px(6, -3, 1, 3, '#1d1d1d');
+      // White face, the Herdwick trademark
+      px(8, -7 + graze * 2, 2, 3, '#f2f0ea');
+      px(9, -6 + graze * 2, 1, 1, '#1d1d1d');
+    });
+  }
+
   drawWaterShimmer(ctx, camX, camY, time) {
     if (this.settings.reduceMotion) return;
     const lvl = this.level;
@@ -570,19 +682,40 @@ export class Renderer {
       ctx.fillRect(x + 3, y + 1, 3, 1);
     });
 
-    // Ordnance Survey trig pillar
     const f = lvl.finish;
     const fx = f.x - camX;
-    const fy = f.y - camY;
-    ctx.fillStyle = pal.outline ?? '#3b4147';
-    ctx.fillRect(fx - 1, fy - 15, 10, 15);
-    ctx.fillStyle = '#f4f4f0';
-    ctx.fillRect(fx, fy - 14, 8, 14);
-    ctx.fillStyle = '#d4d6d2';
-    ctx.fillRect(fx + 6, fy - 14, 2, 14);
-    ctx.fillStyle = '#3b4147';
-    ctx.fillRect(fx + 1, fy - 16, 6, 2);
-    ctx.fillRect(fx + 3, fy - 9, 2, 3);
+    let fy = f.y - camY;
+    const summit = lvl.def.summit ?? 'pillar';
+    if (summit === 'ring') {
+      // Hallsfell Top: a low concrete survey ring set in the rock
+      ctx.fillStyle = pal.outline ?? '#3b4147';
+      ctx.fillRect(fx - 4, fy - 4, 16, 4);
+      ctx.fillStyle = '#e6e6df';
+      ctx.fillRect(fx - 3, fy - 3, 14, 2);
+      ctx.fillStyle = '#9da29d';
+      ctx.fillRect(fx + 1, fy - 3, 6, 1);
+      fy += 13;
+    } else {
+      if (summit === 'cairn-pillar') {
+        // Scafell Pike: the trig pillar stands on a great stone platform
+        ctx.fillStyle = pal.outline ?? '#2c3137';
+        ctx.fillRect(fx - 9, fy - 7, 26, 7);
+        ctx.fillStyle = pal.boulderLight;
+        for (let i = 0; i < 6; i++) ctx.fillRect(fx - 8 + i * 4, fy - 6 + (i % 2), 3, 2);
+        for (let i = 0; i < 6; i++) ctx.fillRect(fx - 7 + i * 4, fy - 3 - (i % 2), 3, 2);
+        fy -= 7;
+      }
+      // Ordnance Survey trig pillar
+      ctx.fillStyle = pal.outline ?? '#3b4147';
+      ctx.fillRect(fx - 1, fy - 15, 10, 15);
+      ctx.fillStyle = '#f4f4f0';
+      ctx.fillRect(fx, fy - 14, 8, 14);
+      ctx.fillStyle = '#d4d6d2';
+      ctx.fillRect(fx + 6, fy - 14, 2, 14);
+      ctx.fillStyle = '#3b4147';
+      ctx.fillRect(fx + 1, fy - 16, 6, 2);
+      ctx.fillRect(fx + 3, fy - 9, 2, 3);
+    }
     // Summit flag, streaming downwind
     const wind = run ? run.wind : 0;
     const dir = wind < -4 ? -1 : 1;

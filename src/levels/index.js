@@ -3,6 +3,7 @@ import { Level } from '../level.js';
 import blencathra from './blencathra.js';
 import helvellyn from './helvellyn.js';
 import scafell from './scafell.js';
+import { hashString } from '../rng.js';
 import { stitch } from './stitch.js';
 
 // The three fells, in order of difficulty. Each map is a list of sections
@@ -45,6 +46,9 @@ export const LEVEL_DEFS = [
 function build(def) {
   const { map, places } = stitch(def.sections);
   const level = new Level({ ...def, map, places });
+  // Best times and ghosts are stored under this key, so editing a map
+  // retires the records set on the old one instead of comparing unlike runs.
+  level.key = `${def.id}.${hashString(map).toString(36)}`;
   // Cairns, and the places along the route, take their names from the
   // section they're in.
   level.places = places.map((p) => ({ ...p, x: p.col * TILE }));

@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Fell Runner</title>
+    <meta name="description" content="A Celeste-style speedrunning platformer over three notorious Lake District fells, with seeded weather, wind physics, ghosts and full accessibility options." />
+    <meta name="theme-color" content="#1d2a35" />
+    <meta property="og:title" content="Fell Runner" />
+    <meta property="og:description" content="Speedrun Blencathra, Helvellyn and Scafell Pike through seeded Lakeland weather." />
+    <meta property="og:image" content="https://rmcrkd.github.io/fell-runner/docs/social-preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%235d9bd6'/%3E%3Cpath d='M0 16 6 6l3 4 2-3 5 9z' fill='%233c444d'/%3E%3Cpath d='M6 6 7.5 8.5 4.5 8.5z' fill='%23fff'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="src/main.js"></script>
+  </head>
+  <body>
+    <div id="stage" role="region" aria-label="Game">
+      <canvas id="game" role="img" aria-label="Fell Runner game view"></canvas>
+
+      <div id="hud" aria-hidden="true" hidden>
+        <div class="hud-tl">
+          <div id="hud-time" class="hud-time">0:00.00</div>
+          <div id="hud-split" class="hud-split" hidden></div>
+          <div class="hud-meta">
+            <span id="hud-deaths" title="Falls">✕ 0</span>
+            <span id="hud-assist" class="badge" hidden>Assist</span>
+          </div>
+        </div>
+        <div class="hud-tr">
+          <div class="wind">
+            <svg id="hud-wind-arrow" viewBox="-12 -6 24 12" width="48" height="24" aria-hidden="true">
+              <path d="M-10 0H6M2 -4 7 0 2 4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <div>
+              <div id="hud-wind-word" class="wind-word">Calm</div>
+              <div id="hud-wind-detail" class="wind-detail"></div>
+            </div>
+          </div>
+          <div id="hud-gust" class="gust" hidden>
+            <span id="hud-gust-text">Gust incoming</span>
+            <span class="gust-bar"><span id="hud-gust-fill"></span></span>
+          </div>
+        </div>
+        <div class="hud-bl">
+          <div id="hud-dashes" class="dashes"></div>
+          <div id="hud-stamina" class="stamina" hidden><span id="hud-stamina-fill"></span></div>
+        </div>
+        <div id="hud-banner" class="banner" hidden></div>
+        <div id="hud-caption" class="caption" hidden></div>
+        <div class="rotate-hint">Turn your phone sideways for a bigger view</div>
+      </div>
+
+      <div id="touch" hidden>
+        <div class="pad">
+          <button type="button" data-touch="up" aria-label="Up">▲</button>
+          <button type="button" data-touch="left" aria-label="Left">◀</button>
+          <button type="button" data-touch="right" aria-label="Right">▶</button>
+          <button type="button" data-touch="down" aria-label="Down">▼</button>
+        </div>
+        <div class="acts">
+          <button type="button" data-touch="grab">Grab</button>
+          <button type="button" data-touch="dash">Dash</button>
+          <button type="button" data-touch="jump">Jump</button>
+        </div>
+        <button type="button" class="touch-pause" data-touch="pause" aria-label="Pause">II</button>
+      </div>
+    </div>
+
+    <main id="menus">
+      <!-- Title -->
+      <section id="screen-title" class="screen title-screen" aria-labelledby="title-h">
+        <h1 id="title-h" class="logo" tabindex="-1">Fell<span>Runner</span></h1>
+        <p class="tagline">Speedrun the Lake District's most notorious fells.</p>
+        <nav class="menu" aria-label="Main menu">
+          <button type="button" class="primary" data-go="setup">Play</button>
+          <button type="button" data-go="howto">How to play</button>
+          <button type="button" data-go="settings">Settings &amp; accessibility</button>
+          <button type="button" data-go="safety">Real fells &amp; mountain rescue</button>
+          <button type="button" data-go="credits">Credits</button>
+        </nav>
+        <div class="donate-box">
+          <p>Fell Runner is free. If you enjoy it, please support the volunteers who rescue real fell runners.</p>
+          <a class="button-link donate" href="https://penrithmrt.org.uk/donate" target="_blank" rel="noopener">♥ Donate to Penrith Mountain Rescue Team<span class="sr-only"> (opens in a new tab)</span></a>
+        </div>
+      </section>
+
+      <!-- Run setup -->
+      <section id="screen-setup" class="screen panel wide" aria-labelledby="setup-h" hidden>
+        <h2 id="setup-h" tabindex="-1">Choose your run</h2>
+        <form id="setup-form">
+          <fieldset>
+            <legend>Fell</legend>
+            <div id="pick-level" class="cards"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Running vest</legend>
+            <div id="pick-vest" class="cards"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Weather</legend>
+            <div id="pick-difficulty" class="cards compact"></div>
+          </fieldset>
+          <fieldset class="seed-row">
+            <legend>Weather seed</legend>
+            <div class="seed-controls">
+              <label for="seed-input" class="sr-only">Seed code</label>
+              <input id="seed-input" name="seed" autocomplete="off" spellcheck="false" maxlength="24" aria-describedby="seed-help forecast" />
+              <button type="button" id="seed-random">New weather</button>
+              <button type="button" id="seed-daily">Daily seed</button>
+              <button type="button" id="seed-ghost" hidden>Ghost's weather</button>
+            </div>
+            <p id="seed-help" class="help">Same seed, same weather, gust for gust. Share a seed to race friends fairly.</p>
+            <p id="forecast" class="forecast" aria-live="polite"></p>
+          </fieldset>
+          <div class="row-end">
+            <label class="check"><input type="checkbox" id="setup-ghost" /> Race my best ghost</label>
+            <button type="button" data-back>Back</button>
+            <button type="submit" class="primary">Start run</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Pause -->
+      <section id="screen-pause" class="screen panel narrow" aria-labelledby="pause-h" hidden>
+        <h2 id="pause-h" tabindex="-1">Paused</h2>
+        <p id="pause-info" class="help"></p>
+        <nav class="menu" aria-label="Pause menu">
+          <button type="button" class="primary" id="pause-resume">Resume</button>
+          <button type="button" id="pause-restart">Restart run</button>
+          <button type="button" data-go="settings">Settings &amp; accessibility</button>
+          <button type="button" id="pause-quit">Quit to menu</button>
+        </nav>
+      </section>
+
+      <!-- Results -->
+      <section id="screen-results" class="screen panel" aria-labelledby="results-h" hidden>
+        <h2 id="results-h" tabindex="-1">Summit!</h2>
+        <p id="results-pb" class="pb" hidden>New personal best!</p>
+        <dl id="results-stats" class="stats"></dl>
+        <table id="results-splits" class="splits" hidden>
+          <caption>Splits</caption>
+          <thead>
+            <tr><th scope="col">Cairn</th><th scope="col">Time</th><th scope="col">vs best</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p class="help" id="results-share-help">Challenge a friend to the exact same weather:</p>
+        <div class="seed-controls">
+          <button type="button" id="results-copy">Copy challenge link</button>
+          <span id="results-copied" class="help" role="status"></span>
+        </div>
+        <nav class="menu horizontal" aria-label="After the run">
+          <button type="button" class="primary" id="results-retry">Run it again</button>
+          <button type="button" id="results-new">New weather</button>
+          <button type="button" data-go="setup">Change fell or vest</button>
+          <button type="button" data-go="title">Main menu</button>
+        </nav>
+        <div class="donate-box">
+          <p>On the real fells, rescue comes from unpaid volunteers. Celebrate your summit by supporting them.</p>
+          <a class="button-link donate" href="https://penrithmrt.org.uk/donate" target="_blank" rel="noopener">♥ Donate to Penrith MRT<span class="sr-only"> (opens in a new tab)</span></a>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section id="screen-settings" class="screen panel wide" aria-labelledby="settings-h" hidden>
+        <h2 id="settings-h" tabindex="-1">Settings &amp; accessibility</h2>
+        <form id="settings-form" class="settings">
+          <fieldset>
+            <legend>Controls</legend>
+            <div class="field">
+              <span class="label" id="grab-mode-label">Grab button</span>
+              <div class="seg" role="radiogroup" aria-labelledby="grab-mode-label">
+                <label><input type="radio" name="grabMode" value="hold" /> Hold</label>
+                <label><input type="radio" name="grabMode" value="toggle" /> Toggle</label>
+              </div>
+            </div>
+            <table class="bindings">
+              <caption class="sr-only">Keyboard controls</caption>
+              <thead><tr><th scope="col">Action</th><th scope="col">Keys</th><th scope="col"><span class="sr-only">Change</span></th></tr></thead>
+              <tbody id="bindings-body"></tbody>
+            </table>
+            <p class="help">Gamepads work out of the box: stick or d-pad to move, A to jump, X or B to dash, any bumper or trigger to grab, Start to pause.</p>
+            <button type="button" id="bindings-reset">Reset keys to defaults</button>
+          </fieldset>
+
+          <fieldset>
+            <legend>Assist mode</legend>
+            <p class="help">Fell Runner is meant to be challenging, but everyone should be able to reach the summit. Assisted times are kept on their own leaderboard, so feel free.</p>
+            <div class="field">
+              <label for="set-speed">Game speed</label>
+              <select id="set-speed" name="speed">
+                <option value="1">100%</option>
+                <option value="0.9">90%</option>
+                <option value="0.8">80%</option>
+                <option value="0.7">70%</option>
+                <option value="0.6">60%</option>
+                <option value="0.5">50%</option>
+              </select>
+            </div>
+            <label class="check"><input type="checkbox" name="infiniteStamina" /> Infinite climbing stamina</label>
+            <div class="field">
+              <label for="set-dash">Dashes</label>
+              <select id="set-dash" name="dashMode">
+                <option value="default">Vest default</option>
+                <option value="two">Two</option>
+                <option value="infinite">Infinite</option>
+              </select>
+            </div>
+            <label class="check"><input type="checkbox" name="invincible" /> Invincible (bounce out of hazards)</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Visuals</legend>
+            <label class="check"><input type="checkbox" name="reduceMotion" /> Reduce motion (no parallax, bobbing or dash trails)</label>
+            <label class="check"><input type="checkbox" name="screenShake" /> Screen shake</label>
+            <label class="check"><input type="checkbox" name="highContrast" /> High contrast</label>
+            <div class="field">
+              <label for="set-weatherfx">Rain and snow effects</label>
+              <select id="set-weatherfx" name="weatherFx">
+                <option value="full">Full</option>
+                <option value="reduced">Reduced</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="set-fog">Maximum fog (clag) thickness</label>
+              <input type="range" id="set-fog" name="fogLimit" min="0" max="1" step="0.25" />
+              <output for="set-fog" id="set-fog-out"></output>
+            </div>
+            <div class="field">
+              <label for="set-hud">HUD size</label>
+              <select id="set-hud" name="hudScale">
+                <option value="1">100%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+                <option value="2">200%</option>
+              </select>
+            </div>
+            <label class="check"><input type="checkbox" name="gustWarnings" /> Gust warnings</label>
+            <label class="check"><input type="checkbox" name="showSplits" /> Show splits at cairns</label>
+            <label class="check"><input type="checkbox" name="showGhost" /> Show best-run ghost</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Sound</legend>
+            <div class="field">
+              <label for="set-volume">Master volume</label>
+              <input type="range" id="set-volume" name="volume" min="0" max="1" step="0.1" />
+            </div>
+            <div class="field">
+              <label for="set-sfx">Effects</label>
+              <input type="range" id="set-sfx" name="sfxVolume" min="0" max="1" step="0.1" />
+            </div>
+            <div class="field">
+              <label for="set-amb">Wind and rain</label>
+              <input type="range" id="set-amb" name="ambienceVolume" min="0" max="1" step="0.1" />
+            </div>
+            <label class="check"><input type="checkbox" name="captions" /> Sound captions</label>
+            <label class="check"><input type="checkbox" name="announce" /> Screen reader announcements (checkpoints, results)</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Data</legend>
+            <p class="help">Best times and ghosts are stored only in this browser.</p>
+            <button type="button" id="clear-records">Delete all best times and ghosts</button>
+          </fieldset>
+        </form>
+        <div class="row-end">
+          <button type="button" class="primary" data-back>Done</button>
+        </div>
+      </section>
+
+      <!-- How to play -->
+      <section id="screen-howto" class="screen panel wide prose" aria-labelledby="howto-h" hidden>
+        <h2 id="howto-h" tabindex="-1">How to play</h2>
+        <p>Run from the valley to the summit trig point as fast as you can. The clock starts on your first move.</p>
+        <table class="controls">
+          <caption class="sr-only">Default controls</caption>
+          <thead><tr><th scope="col">Action</th><th scope="col">Keyboard</th><th scope="col">Gamepad</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Move</th><td>Arrow keys or WASD</td><td>Left stick or d-pad</td></tr>
+            <tr><th scope="row">Jump</th><td>C, Space or J</td><td>A</td></tr>
+            <tr><th scope="row">Dash</th><td>X or K</td><td>X or B</td></tr>
+            <tr><th scope="row">Grab and climb</th><td>Z, L or Left Shift</td><td>Bumpers or triggers</td></tr>
+            <tr><th scope="row">Restart</th><td>R</td><td>Back / Select</td></tr>
+            <tr><th scope="row">Pause</th><td>Esc or P</td><td>Start</td></tr>
+          </tbody>
+        </table>
+        <h3>Moving on the fells</h3>
+        <ul>
+          <li><strong>Jump</strong> higher by holding the button. You can still jump just after running off an edge, and a press just before landing is remembered.</li>
+          <li><strong>Wall jump</strong> by pressing jump next to a crag.</li>
+          <li><strong>Climb</strong> by holding grab against a crag. Climbing uses stamina, which refills when you stand on the ground. A sweat drop means your arms are nearly done.</li>
+          <li><strong>Dash</strong> in any of eight directions. Your buff turns <span class="swatch orange">orange</span> when a dash is ready and <span class="swatch blue">blue</span> once it's spent. Touch the ground to recharge.</li>
+          <li><strong>Kendal mint cake</strong> refills your dash and stamina in mid-air.</li>
+          <li><strong>Cairns</strong> are checkpoints. Sharp rocks, tarns and big drops send you back to the last one.</li>
+        </ul>
+        <h3>Weather</h3>
+        <ul>
+          <li><strong>Wind</strong> pushes you around, especially in the air. Watch the wind gauge, streaks and your buff. The <em>gust warning</em> gives about a second's notice.</li>
+          <li><strong>Rain and snow</strong> make the rock greasy: you'll slide further when stopping or turning.</li>
+          <li><strong>Clag</strong> (hill fog) hides the way ahead. You can limit it in Settings.</li>
+        </ul>
+        <h3>Speedrunning</h3>
+        <ul>
+          <li>Every run's weather comes from its <strong>seed</strong>. The same seed gives the same gusts at the same moments, so share one with friends for a fair race.</li>
+          <li>Your fastest run on each fell and weather setting is saved with a <strong>ghost</strong> to race. Splits at each cairn show whether you're ahead.</li>
+          <li><strong>Super jump:</strong> jump during a sideways dash on the ground. <strong>Hyper:</strong> dash down-diagonally into the ground, then jump. <strong>Wall bounce:</strong> dash upwards beside a crag, then jump.</li>
+        </ul>
+        <div class="row-end"><button type="button" class="primary" data-back>Back</button></div>
+      </section>
+
+      <!-- Safety -->
+      <section id="screen-safety" class="screen panel prose" aria-labelledby="safety-h" hidden>
+        <h2 id="safety-h" tabindex="-1">Real fells &amp; mountain rescue</h2>
+        <p>Sharp Edge, Striding Edge and the Scafell massif are real places, and real people are hurt on them every year, often in exactly the weather this game throws at you. On the real fells there are no respawns.</p>
+        <ul>
+          <li>Check a mountain forecast before you go, such as the <a href="https://www.lakedistrictweatherline.co.uk/" target="_blank" rel="noopener">Lake District Weatherline<span class="sr-only"> (opens in a new tab)</span></a> or <a href="https://www.mwis.org.uk/" target="_blank" rel="noopener">MWIS<span class="sr-only"> (opens in a new tab)</span></a>.</li>
+          <li>Carry a map and compass and know how to use them, plus warm layers, a waterproof, a torch and food.</li>
+          <li>Turning back is always an option.</li>
+        </ul>
+        <p class="callout"><strong>In an emergency in the UK mountains, dial 999, ask for the Police, then Mountain Rescue.</strong></p>
+        <p>Lakeland's mountain rescue teams are unpaid volunteers, on call around the clock, every day of the year, and funded mostly by donations. If you enjoy the fells, in real life or in pixels, please consider supporting them.</p>
+        <p class="link-row">
+          <a class="button-link donate" href="https://penrithmrt.org.uk/donate" target="_blank" rel="noopener">♥ Donate to Penrith MRT<span class="sr-only"> (opens in a new tab)</span></a>
+          <a class="button-link" href="https://penrithmrt.org.uk/" target="_blank" rel="noopener">Visit Penrith Mountain Rescue Team<span class="sr-only"> (opens in a new tab)</span></a>
+        </p>
+        <p class="help">Fell Runner is an unofficial fan project, not affiliated with or endorsed by Penrith Mountain Rescue Team.</p>
+        <div class="row-end"><button type="button" class="primary" data-back>Back</button></div>
+      </section>
+
+      <!-- Credits -->
+      <section id="screen-credits" class="screen panel prose" aria-labelledby="credits-h" hidden>
+        <h2 id="credits-h" tabindex="-1">Credits</h2>
+        <dl class="credits">
+          <dt>Created by</dt>
+          <dd>Ryan McCrickerd, built with <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code<span class="sr-only"> (opens in a new tab)</span></a></dd>
+          <dt>Movement</dt>
+          <dd>Modelled on <a href="https://www.celestegame.com/" target="_blank" rel="noopener">Celeste<span class="sr-only"> (opens in a new tab)</span></a> by Maddy Thorson and Noel Berry, whose <a href="https://github.com/NoelFB/Celeste" target="_blank" rel="noopener">published player controller<span class="sr-only"> (opens in a new tab)</span></a> taught a generation how platformers should feel. Assist mode follows Celeste's lead too.</dd>
+          <dt>The real heroes</dt>
+          <dd>The volunteers of <a href="https://penrithmrt.org.uk/" target="_blank" rel="noopener">Penrith Mountain Rescue Team<span class="sr-only"> (opens in a new tab)</span></a> and every Lakeland mountain rescue team.</dd>
+          <dt>The fells</dt>
+          <dd>Routes and place names come from the real Blencathra, Helvellyn and Scafell Pike. Go and see them, carefully.</dd>
+          <dt>Forecasts</dt>
+          <dd>The Lake District National Park's Weatherline and the Mountain Weather Information Service, recommended for real days out.</dd>
+          <dt>Algorithms</dt>
+          <dd>Mulberry32 random numbers by Tommy Ettinger; FNV-1a hashing by Glenn Fowler, Landon Curt Noll and Kiem-Phong Vo.</dd>
+          <dt>Kendal mint cake</dt>
+          <dd>Fuel of fell runners and mountaineers for over a century.</dd>
+        </dl>
+        <div class="row-end"><button type="button" class="primary" data-back>Back</button></div>
+      </section>
+    </main>
+
+    <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <noscript><p class="noscript">Fell Runner needs JavaScript to run.</p></noscript>
+  </body>
+</html>

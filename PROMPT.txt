@@ -1,0 +1,21 @@
+This is a repository for:
+- a 2d platformer speedrunning game called Fell Runner
+- physics and gameplay like celeste
+- 3 levels based on the most notorious lake district fells
+- 3 running vest choices
+- seeded random weather
+- 3 difficulty choices which dictate weather severity
+    - none
+    - normal
+    - extreme
+- wind affects player physics
+- about a minute per level
+- best times and ghosts recorded
+- offer donations to https://penrithmrt.org.uk/
+- maximise accessibility
+review what you find here, and improve it
+keep your work in this directory and do not edit PROMPT.txt
+push your changes to https://github.com/rmcrkd/fell-runner
+make this github repository attractive
+once done, make suggestions for improving PROMPT.txt
+give credit where it's due

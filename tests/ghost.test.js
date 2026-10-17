@@ -21,3 +21,21 @@ test('ghost recordings round-trip through base64', () => {
   }
   assert.equal(play.at(frames), null);
 });
+
+test('the same inputs in the same seeded weather always record the same ghost', async () => {
+  const { DIFFICULTIES, VESTS, byId } = await import('../src/config.js');
+  const { levelById } = await import('../src/levels/index.js');
+  const { Run } = await import('../src/run.js');
+  const level = levelById('helvellyn');
+  const vest = byId(VESTS, 'featherweight');
+  const extreme = byId(DIFFICULTIES, 'extreme');
+  // Run right and jump every so often, for twenty seconds
+  const inputs = Array.from({ length: 1200 }, (_, i) => ({ moveX: 1, moveY: 0, jump: i % 40 < 12, jumpPressed: i % 40 === 0, dashPressed: i % 90 === 45, grab: false }));
+  const record = (seed) => {
+    const run = new Run({ level, vest, difficulty: extreme, seed });
+    for (const input of inputs) run.update(input);
+    return run.recorder.encode();
+  };
+  assert.equal(record(1234), record(1234));
+  assert.notEqual(record(1234), record(4321), 'different weather blows the runner differently');
+});

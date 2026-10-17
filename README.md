@@ -1,50 +1,55 @@
 <div align="center">
 
-<img src="docs/social-preview.png" alt="Fell Runner: speedrun the Lake District's most notorious fells" width="100%">
+<img src="docs/social-preview.png" alt="Fell Runner: a runner on the rock teeth of Sharp Edge in the rain, beneath the game's title" width="100%">
 
 **A Celeste-style speedrunning platformer over three notorious Lake District fells,<br>where the weather is seeded, the wind is physics, and the mountain rescue team is real.**
 
 [![Tests](https://github.com/rmcrkd/fell-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/rmcrkd/fell-runner/actions/workflows/ci.yml)
-![Zero dependencies](https://img.shields.io/badge/dependencies-0-2f8fd8)
+![Zero runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f8fd8)
 ![axe-core: 0 violations](https://img.shields.io/badge/axe--core-0%20violations-5f9a3b)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-ff9f1c)](LICENSE)
 [![Donate to Penrith Mountain Rescue Team](https://img.shields.io/badge/%E2%99%A5%20donate-Penrith%20MRT-c8102e)](https://penrithmrt.org.uk/donate)
 
 ### [▶ Play in your browser](https://rmcrkd.github.io/fell-runner/)
 
-<img src="docs/gameplay.gif" alt="A runner crosses Striding Edge on Helvellyn in heavy rain and a severe westerly gale, with a gust warning showing" width="720">
+<img src="docs/gameplay.gif" alt="A runner crosses Striding Edge on Helvellyn in heavy rain and a strong westerly wind, jumping between rock teeth and over a bridge of loose slate" width="720">
 
 </div>
 
 ## The game
 
-Race from the valley floor to the summit trig point. Every fell takes about a minute if you're good, and longer if the weather has other ideas.
+Race from the valley floor to the summit. A good run takes about a minute; your first attempt, in a gale, will take rather longer.
 
 - **Tight, Celeste-style movement.** Coyote time, jump buffering, variable jump height, wall jumps, stamina-limited climbing, eight-way dashes and corner correction. Super jumps, hypers and wall bounces are there for players who go looking.
-- **Seeded weather.** Wind, gusts, rain, sleet, snow and hill fog all come from a seed. The same seed gives the same gust at the same moment, so races are fair.
-- **Wind is physics.** It shoves you mid-air, gives you some purchase on the ground, and can't touch you while you're clinging to a crag. You get about a second's warning before each gust.
-- **Wet rock.** Rain and snow make the ground greasy, so stopping and turning take longer.
-- **Three vests.** You trade speed against stamina, wind resistance and dashes.
-- **Ghosts, splits and personal bests.** These are recorded for every fell and weather setting.
-- **Challenge links.** Share a URL that loads the exact same fell, vest and storm.
-- **No build step and no dependencies.** It's plain JavaScript modules and a canvas.
+- **Real routes.** Each fell follows its real path, and the places along it (Scales Tarn, the Hole-in-the-Wall, Mickledore and the rest) come up on screen as you reach them.
+- **Seeded weather.** Wind, gusts, rain, sleet, snow and hill fog all come from a seed you can see, type, randomise or share. The same seed brings the same gust at the same moment, so races are fair.
+- **Wind is physics.** It shoves you in the air and less so on the ground. It's gentler in the valley and full force on the tops, and a crag or wall on the windward side gives you shelter. You get about a second's warning of every gust.
+- **Loose rock.** Greasy slabs of slate and scree hold you for a moment, then give way. Keep moving.
+- **Three vests** trade speed against stamina, wind resistance and dashes.
+- **Ghosts, splits, replays and personal bests** for every fell and weather setting, plus a route map showing you and your ghost.
+- **Challenge links** load the exact same fell, vest and storm for a friend.
+- **No build step and no runtime dependencies.** It's plain JavaScript modules and a canvas.
 
 ## The fells
 
 | | Fell | Route | Height |
 |---|---|---|---|
-| ▲ | **Blencathra** | Scales Tarn, Scales Fell, the rock teeth of **Sharp Edge**, the Bad Step, then the Foule Crag chimney | 868 m |
-| ▲▲ | **Helvellyn** | The Hole-in-the-Wall, Birkhouse Moor, the pinnacles of **Striding Edge** above Red Tarn, the chimney, the headwall, then the summit shelter | 950 m |
-| ▲▲▲ | **Scafell Pike** | Lingmell Gill, Brown Tongue, Hollow Stones, the **Mickledore** chimney, then the endless summit boulder field | 978 m |
+| ▲ | **Blencathra** via Sharp Edge | Scales, round Scales Fell and up Scales Beck to Scales Tarn, across the teeth of **Sharp Edge** and its polished Bad Step, up Foule Crag to Atkinson Pike and the survey ring on Hallsfell Top | 868 m |
+| ▲▲ | **Helvellyn** via Striding Edge | Glenridding, over Birkhouse Moor to the Hole-in-the-Wall, High Spying How and the crest of **Striding Edge** above Red Tarn, down the chimney, past the Gough Memorial, then the summit shelter and trig point | 950 m |
+| ▲▲▲ | **Scafell Pike** from Wasdale Head | Ford Lingmell Gill, climb the stone staircase of Brown Tongue, cross the boulders of Hollow Stones, scramble the loose scree to **Mickledore**, then the summit boulder field to the trig point on its great cairn | 978 m |
 
 <table>
   <tr>
-    <td><img src="docs/blencathra.png" alt="Blencathra: jumping between the rock teeth of Sharp Edge in steady rain, with a reached cairn flag behind"></td>
-    <td><img src="docs/scafell.png" alt="Scafell Pike: climbing the snowy Mickledore chimney in a gale, a mint cake floating above"></td>
+    <td><img src="docs/blencathra.png" alt="Blencathra: crossing the rock teeth of Sharp Edge in rain, over gullies of shattered rock, with a slab of loose slate ahead"></td>
+    <td><img src="docs/helvellyn.png" alt="Helvellyn: leaping along Striding Edge in heavy rain and a strong westerly wind towards a bridge of loose slate"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/scafell.png" alt="Scafell Pike: jumping between snow-capped blocks in the summit boulder field, with mint cakes in mid-air"></td>
+    <td><img src="docs/phone.png" alt="Scafell Pike on a phone held sideways, with on-screen touch controls, in snow and a strong wind"></td>
   </tr>
 </table>
 
-Cairns are checkpoints, and they also mark your splits. Kendal mint cake refills your dash and stamina in mid-air. Sharp rocks, tarns and big drops send you back to the last cairn.
+Cairns are checkpoints and splits. Kendal mint cake refills your dash and stamina in mid-air, and on Scafell Pike some gaps can only be crossed by dashing to a mint cake and dashing again. Sharp rocks, tarns and big drops send you back to the last cairn.
 
 ## Vests
 
@@ -62,7 +67,9 @@ Cairns are checkpoints, and they also mark your splits. Kendal mint cake refills
 | **Normal** | A typical Lakeland day: breezy, gusty on the tops, passing showers and patchy clag. |
 | **Extreme** | Named-storm weather: gales, driving rain or snow, and thick hill fog. |
 
-The forecast for a seed is shown before you start. Use **Daily seed** to give everyone the same weather for the day.
+The forecast for a seed is shown before you start. **Daily seed** gives everyone the same weather for the day.
+
+<img src="docs/setup.png" alt="The Choose your run screen: cards for the three fells and three vests, with descriptions and stat bars" width="100%">
 
 ## Controls
 
@@ -74,32 +81,34 @@ The forecast for a seed is shown before you start. Use **Daily seed** to give ev
 | Grab and climb | Z / L / Left Shift | Bumpers or triggers | Grab |
 | Restart | R | Back | |
 | Pause | Esc / P | Start | ❚❚ |
+| Read out status | I | Y | |
 
-Every key can be remapped, and grab can be set to hold or toggle.
+Every key and gamepad button can be remapped, and grab can be set to hold or toggle.
 
 ## Accessibility
 
 Fell Runner should be hard, but everyone should be able to reach the summit.
 
-<img src="docs/settings.png" alt="Settings screen showing remappable controls and assist mode options" width="100%">
+<img src="docs/settings.png" alt="The settings screen: grab mode, a table of remappable keyboard keys and gamepad buttons, and assist mode options" width="100%">
 
-- **Assist mode**, inspired by Celeste's: game speed from 50% to 100%, infinite stamina, two or infinite dashes, and invincibility. Assisted times go on their own leaderboard, so they never displace unassisted ones.
-- **Every control can be remapped.** Grab can be hold or toggle, and keyboard, gamepad and touch all work.
-- **Menus and the HUD are real HTML.** That means screen-reader friendly, keyboard and gamepad navigable, and zoomable. Screen readers announce checkpoints, splits and results.
-- **High-contrast mode, with nothing told by colour alone.** Hazards get a high-visibility palette. Reached cairns gain a flag, spent dashes switch to dashed outlines, and splits carry ▲/▼ as well as colour.
-- **Reduce motion.** This removes parallax, bobbing, dash trails and screen shake. It's on by default if your system asks for reduced motion, and high contrast likewise follows your system setting.
+- **Assist mode**, inspired by Celeste's: game speed from 50% to 100%, infinite stamina, two or infinite dashes, and invincibility. Assisted times go on their own board beside the others, so they never displace unassisted ones and are never hidden.
+- **Remappable keys and gamepad buttons.** Grab can be hold or toggle. Keyboard, gamepad and touch all work, and the touch controls fit a 320 px screen.
+- **Menus and the HUD are real HTML.** That makes them screen-reader friendly, keyboard and gamepad navigable, and zoomable. Screen readers hear place names, cairns, splits and results, and a **read out status** key speaks your time, position, the wind, gusts, dashes and stamina on demand.
+- **High-contrast mode, with nothing told by colour alone.** Spent dashes switch to dashed outlines, splits carry ▲/▼, reached cairns gain a flag, crumbling rock shows widening cracks and leaves a dotted outline when it falls, and the route map marks you, your ghost, cairns and the summit with different shapes.
+- **Reduce motion** removes parallax, bobbing, dash trails, shaking rock and screen shake. It's on by default if your system asks for reduced motion, and high contrast likewise follows your system setting.
 - **No flashing effects.** A tired climber shows a sweat drop instead of a flashing sprite.
 - **Weather visibility controls.** Rain and snow can be turned down or off, and you can set a maximum fog thickness.
-- **Wind you can see and hear.** There's a gauge with direction and speed, wind streaks, a gust warning with a countdown, and stereo-panned wind audio. Optional sound captions cover the rest.
+- **Wind you can see and hear.** A gauge shows direction, speed and shelter, there are wind streaks, a gust warning with a countdown, and stereo-panned wind audio. Optional sound captions cover the rest.
 - **Adjustable HUD size**, up to 200%.
 - **Automatic pause** when the window loses focus.
 
-Every menu screen passes an automated [axe-core](https://github.com/dequelabs/axe-core) audit (WCAG 2.2 AA plus best practice) with zero violations.
+Every screen (menus, play, pause, results, replay and touch controls) passes an automated [axe-core](https://github.com/dequelabs/axe-core) audit for WCAG 2.2 AA plus best practice, at desktop, phone and 320 px widths, in both the normal and high-contrast themes. A scripted keyboard-only walkthrough checks that every screen and action can be reached, with focus always visible.
 
 ## Speedrunning
 
-- The clock starts on your first move and stops at the trig point. Time is counted in fixed 60 Hz physics steps, so it doesn't depend on your frame rate.
+- The clock starts on your first move and stops at the summit. Time is counted in fixed 60 Hz physics steps, so it doesn't depend on your frame rate.
 - Your best run on each fell and weather setting saves a **ghost** to race and **splits** for every cairn.
+- **Watch best run** replays your ghost in the weather it ran in, and **Watch this run** replays any run from the results screen.
 - **Ghost's weather** loads the seed your best ghost ran in, for a true like-for-like attempt.
 - After a run, **Copy challenge link** shares the fell, vest and seed, for example `?fell=scafell&weather=extreme&seed=0K3P9QX&vest=mountain`.
 - Tech: **super jump** (jump during a sideways ground dash), **hyper** (down-diagonal dash into the ground, then jump), **wall bounce** (up-dash beside a crag, then jump).
@@ -112,10 +121,21 @@ Times and ghosts are stored only in your browser.
 git clone https://github.com/rmcrkd/fell-runner.git
 cd fell-runner
 npm start            # serves the game at http://localhost:8080
-npm test             # physics, weather, ghosts, and proof every level can be finished
+npm test             # everything, including proof that every fell can be finished (about 2 minutes)
+npm run test:quick   # unit tests only (under a second)
+npm run par          # reference times and cairn spacing for each fell
 ```
 
-You only need Node 20 or later, and only for the dev server and tests. The game itself is static files.
+You only need Node 22 or later, and only for the dev server and tests. The game itself is static files.
+
+The browser tools in [`tools/browser`](tools/browser) (an accessibility audit, a keyboard-only walkthrough, and the script that captured this README's images) have their own dev dependencies. They never ship with the game:
+
+```sh
+cd tools/browser && npm install
+npm run audit       # axe-core on every screen, sizes and themes
+npm run keyboard    # keyboard-only walkthrough
+npm run capture     # regenerate docs/ images and GIF from real gameplay
+```
 
 ## How it's built
 
@@ -125,25 +145,34 @@ src/
   player.js     Celeste-style controller (integer positions, sub-pixel remainders)
   run.js        one attempt: clock, cairns, splits, mint cakes, respawns, ghost recording
   weather.js    seeded wind, gusts, rain/sleet/snow, fog and grip
-  render.js     procedural pixel art at 320×180: parallax fells, weather, the runner
-  levels/       each fell is a plain-text map, one character per tile
+  level.js      tiles, collision, hazards, loose rock, and wind exposure and shelter
+  levels/       each fell is a list of named sections of plain text, one character per tile
+  clock.js      turns real time into fixed 60 Hz steps
+  render.js     procedural pixel art at 320×180: parallax fells, weather, the runner, sheep
+  routemap.js   the HUD's elevation profile
   ghost.js      compact ghost recordings (5 bytes per physics step)
+  replay.js     watch a ghost back in its own weather
   input.js      keyboard, gamepad and touch, remappable
   audio.js      synthesised effects and wind, no audio files
-tools/solver.js finds a route to the summit using the real physics
+tools/
+  solver.js     finds routes to the summit using the real physics
+  par.js        reference times for each fell
+  browser/      dev-only accessibility audit, keyboard walkthrough and captures
 ```
 
-**Every level is proven beatable.** The test suite runs `tools/solver.js`, which drives the real `Player` physics through scripted runs, jumps, wall kicks, chimneys, climbs and dashes from every spot it can reach. It checks that each fell can be finished:
+**Every fell is proven finishable.** The test suite runs `tools/solver.js`, which drives the real `Player` physics through scripted runs, jumps, wall kicks, chimneys, climbs, waits and dashes from every spot it can reach. It checks every fell with every vest:
 
-- with every vest in calm weather without dashing,
-- into the strongest steady extreme headwind,
-- in real seeded extreme storms.
+- in calm weather (without dashing, on the two fells that don't need it),
+- in the worst steady Extreme gale, both head-on and from behind, on the greasiest rock,
+- in the two worst seeded Extreme storms out of 500, gusts and all.
 
-A solved route is then replayed frame by frame through a real `Run` to the summit.
+A solved storm route is then replayed frame by frame through a real `Run`, cairn by cairn, to the summit.
+
+**Every fell is about a minute long.** `npm run par` finds a near-optimal route with an A* search over the same physics. The reference routes take 36 s (Blencathra), 40 s (Helvellyn) and 45 s (Scafell Pike), which puts a skilled player at roughly 50 to 60 seconds. Cairns fall every 13 to 17 seconds of reference route.
 
 ## Contributing
 
-New fells, routes and fixes are welcome. Levels are just text, so [CONTRIBUTING.md](CONTRIBUTING.md) explains the tile key and how to check that your level is beatable.
+New fells, routes and fixes are welcome. Levels are just text, and [CONTRIBUTING.md](CONTRIBUTING.md) explains the tile key, how sections fit together, and how to check that your level is fair and finishable.
 
 ## The real fells
 
@@ -157,12 +186,12 @@ Lakeland's mountain rescue teams are unpaid volunteers, on call around the clock
 
 ## Credits
 
-- **Created by** Ryan McCrickerd, built with [Claude Code](https://claude.com/claude-code).
-- **Movement** is modelled on [Celeste](https://www.celestegame.com/) by Maddy Thorson and Noel Berry. Its constants and techniques (coyote time, buffering, wall jumps, climbing stamina, dashes, supers and hypers) follow the [player controller they published](https://github.com/NoelFB/Celeste), and the assist mode follows Celeste's lead too.
+- **Created by** Ryan McCrickerd, with AI assistance from Claude by Anthropic, through [Claude Code](https://claude.com/claude-code).
+- **Movement** is modelled on [Celeste](https://www.celestegame.com/) by Maddy Thorson and Noel Berry. Its constants and techniques (coyote time, buffering, wall jumps, climbing stamina, dashes, supers and hypers) follow the [player controller they published](https://github.com/NoelFB/Celeste), and the assist mode and crumbling loose rock follow Celeste's lead too.
 - **Inspiration and real-world heroism:** [Penrith Mountain Rescue Team](https://penrithmrt.org.uk/) and every Lakeland mountain rescue team.
 - **Forecast services** recommended in-game: the Lake District National Park's [Weatherline](https://www.lakedistrictweatherline.co.uk/) and [MWIS](https://www.mwis.org.uk/).
-- **Algorithms:** Mulberry32 random numbers by Tommy Ettinger, and FNV-1a hashing by Glenn Fowler, Landon Curt Noll and Kiem-Phong Vo.
-- **Tooling for this README:** accessibility audited with [axe-core](https://github.com/dequelabs/axe-core) by Deque, screenshots captured with [Puppeteer](https://pptr.dev/), and the GIF encoded with [gifenc](https://github.com/mattdesl/gifenc) by Matt DesLauriers. None of these ship with the game.
+- **Algorithms:** Mulberry32 random numbers by Tommy Ettinger; FNV-1a hashing by Glenn Fowler, Landon Curt Noll and Kiem-Phong Vo; and A* search by Peter Hart, Nils Nilsson and Bertram Raphael, which times the reference routes.
+- **Development tools:** accessibility audited with [axe-core](https://github.com/dequelabs/axe-core) by Deque, screenshots captured with [Puppeteer](https://pptr.dev/), images decoded with [pngjs](https://github.com/pngjs/pngjs), and the GIF encoded with [gifenc](https://github.com/mattdesl/gifenc) by Matt DesLauriers. None of these ship with the game.
 
 ## Licence
 

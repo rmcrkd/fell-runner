@@ -5,7 +5,6 @@
 //
 //   npm run metadata        check CITATION.cff, and GitHub too if gh can reach it
 //   npm run metadata:sync   push the description, homepage and topics to GitHub
-//   node tools/metadata.js hook   (Claude Code Stop hook; see .claude/settings.json)
 //
 // The social preview image can't be set through the API: upload
 // docs/social-preview.png in Settings → General → Social preview.
@@ -94,36 +93,10 @@ function sync(pkg) {
   console.log(`Updated ${pkg.repo}: description, website, topics (+${add.length} −${remove.length}).`);
 }
 
-// Stop hook: if the About box has drifted from package.json, keep the agent
-// going once with instructions. Never blocks twice in a row, and stays quiet
-// when gh is missing or offline.
-function hook() {
-  let input = {};
-  try {
-    input = JSON.parse(readFileSync(0, 'utf8') || '{}');
-  } catch {
-    // no input
-  }
-  if (input.stop_hook_active) return;
-  const pkg = loadPackage();
-  const problems = localProblems(pkg);
-  const live = liveMetadata(pkg.repo);
-  if (live) problems.push(...remoteProblems(pkg, live));
-  if (!problems.length) return;
-  const reason = [
-    'The repository metadata is out of step:',
-    ...problems.map((p) => `- ${p}`),
-    'package.json is the source of truth (description, homepage, keywords = topics, version). Fix CITATION.cff to match it, and once the package.json values are on main (or the user has asked), run `npm run metadata:sync` to update GitHub. If they are only on an unmerged branch, say so in your hand-over instead. See "Project metadata" in CONTRIBUTING.md.',
-  ].join('\n');
-  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
-}
-
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const cmd = process.argv[2] ?? 'check';
   const pkg = loadPackage();
-  if (cmd === 'hook') {
-    hook();
-  } else if (cmd === 'sync') {
+  if (cmd === 'sync') {
     const local = localProblems(pkg);
     if (local.length) {
       console.error(local.join('\n'));

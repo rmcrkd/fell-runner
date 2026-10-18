@@ -1,0 +1,32 @@
+# Lets GitHub show "Cite this repository". Keep title, version, abstract,
+# keywords, url and licence in step with package.json: `npm run metadata`
+# checks them, and the test suite runs that check.
+cff-version: 1.2.0
+message: If you use or refer to Fell Runner, please cite it as below.
+type: software
+title: Fell Runner
+version: 0.2.0
+date-released: 2026-10-18
+abstract: A Celeste-style speedrunning platformer over three notorious Lake District fells, with real routes, seeded weather, wind physics, ghosts and full accessibility. Free to play in your browser.
+authors:
+  - given-names: Ryan
+    family-names: McCrickerd
+repository-code: https://github.com/rmcrkd/fell-runner
+url: https://rmcrkd.github.io/fell-runner/
+license: MIT
+keywords:
+  - game
+  - browser-game
+  - platformer
+  - speedrun
+  - celeste-like
+  - pixel-art
+  - html5-canvas
+  - javascript
+  - accessibility
+  - a11y
+  - lake-district
+  - fell-running
+  - seeded-random
+  - github-pages
+  - zero-dependencies

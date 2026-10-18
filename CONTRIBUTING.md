@@ -88,6 +88,17 @@ npm run capture     # regenerate the README's images and GIF in docs/
 
 Screenshots go to `.scratch/` (gitignored) unless you set `OUT`.
 
+## Project metadata
+
+`package.json` is the single source of truth for the project's description, website, keywords (which are also the GitHub topics), version and licence. `CITATION.cff` must match it, and so must the repository's About box on GitHub:
+
+```sh
+npm run metadata        # checks CITATION.cff (also run by npm test) and, if gh can reach it, GitHub
+npm run metadata:sync   # updates GitHub's description, website and topics from package.json
+```
+
+Change the values in `package.json`, update `CITATION.cff` to match (bump its `version` and `date-released` with each release), and sync GitHub once the change is merged. For Claude Code users, a Stop hook in `.claude/settings.json` flags any drift. The social preview image can't be set through the API: upload `docs/social-preview.png` under Settings → General → Social preview.
+
 ## Code style
 
 - Plain ES modules, two-space indentation, single quotes.

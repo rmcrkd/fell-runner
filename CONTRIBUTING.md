@@ -100,7 +100,7 @@ npm run metadata        # checks CITATION.cff (also run by npm test) and, if gh 
 npm run metadata:sync   # updates GitHub's description, website and topics from package.json
 ```
 
-Change the values in `package.json`, update `CITATION.cff` to match (bump its `version` and `date-released` with each release), and sync GitHub once the change is merged. For Claude Code users, a Stop hook in `.claude/settings.json` flags any drift. The social preview image can't be set through the API: upload `docs/social-preview.png` under Settings → General → Social preview.
+Change the values in `package.json`, update `CITATION.cff` to match (bump its `version` and `date-released` with each release), and sync GitHub once the change is merged. The social preview image can't be set through the API: upload `docs/social-preview.png` under Settings → General → Social preview.
 
 ## Code style
 

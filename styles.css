@@ -279,10 +279,12 @@ body:not(.playing) #game {
   left: 50%;
   top: 50%;
   transform: translate(-50%, calc(min(100vw * 9 / 32, 50vh) + 1.5em));
+  width: max-content;
+  max-width: 92vw;
+  text-align: center;
   font-weight: 600;
   color: var(--muted);
   text-shadow: none;
-  white-space: nowrap;
 }
 
 @media (orientation: portrait) and (pointer: coarse) {
@@ -307,6 +309,38 @@ body:not(.playing) #game {
   padding: 0.1em 0.8em;
   border-radius: 999px;
   background: rgba(10, 16, 22, 0.55);
+}
+
+/* Signpost tips, low in the middle so they never cover the runner, and
+   above any sound caption at every HUD size */
+.hint {
+  left: 50%;
+  bottom: calc(12% + 2.6em);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(90vw, 26em);
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.4;
+  text-shadow: none;
+  background: rgba(10, 16, 22, 0.85);
+  border: 2px solid #b38d5f;
+  border-radius: var(--radius);
+  padding: 0.4em 0.9em;
+}
+
+.hint kbd {
+  font: inherit;
+  font-family: ui-monospace, Menlo, monospace;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 4px;
+  padding: 0 0.3em;
+}
+
+body.contrast .hint {
+  background: #000;
+  border-color: #fff;
 }
 
 /* Elevation profile of the route, bottom centre */
@@ -381,6 +415,38 @@ body.contrast .rm-ground {
 @media (orientation: portrait) and (max-height: 760px) {
   body.touching .route-map {
     display: none;
+  }
+}
+
+/* In portrait, a signpost tip goes just below the game, in place of the
+   route map and the rotate hint while it shows */
+@media (orientation: portrait) {
+  .hint {
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, calc(min(100vw * 9 / 32, 50vh) + 0.5em));
+    font-size: 0.9em;
+  }
+
+  #hud:has(#hud-hint:not([hidden])) .route-map,
+  #hud:has(#hud-hint:not([hidden])) .rotate-hint {
+    visibility: hidden;
+  }
+}
+
+/* Narrow screens: keep the clock and the wind gauge from colliding */
+@media (max-width: 420px) {
+  .hud-time {
+    font-size: 1.5em;
+  }
+
+  .hud-tr {
+    max-width: 55vw;
+  }
+
+  .wind svg {
+    width: calc(32px * var(--hud));
+    height: calc(16px * var(--hud));
   }
 }
 
@@ -1032,6 +1098,41 @@ thead th {
   text-align: center;
   padding: 1em;
   background: #000;
+}
+
+/* Keeps "Gold 0:54" or "Normal: 1:02.10" together when a line wraps */
+.nb {
+  white-space: nowrap;
+}
+
+/* Target-time medals: always named, the colour is extra */
+.medal {
+  display: inline-block;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #1b1204;
+  border: 1px solid #1b1204;
+}
+
+.medal-gold {
+  background: #ffd23f;
+}
+
+.medal-silver {
+  background: #d5dde3;
+}
+
+.medal-bronze {
+  background: #e3a06a;
+}
+
+.stats small {
+  display: block;
+  color: var(--muted);
+  font-weight: 500;
 }
 
 /* High contrast UI */

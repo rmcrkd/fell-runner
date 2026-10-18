@@ -10,7 +10,7 @@ for (const level of LEVELS) {
   test(`${def.name}: map is well formed`, () => {
     const rows = def.map.split('\n');
     for (const row of rows) assert.equal(row.length, level.cols, 'rows have equal width');
-    assert.match(def.map, /^[\n.#B=\-^~*%hCPF]+$/, 'only known tile characters');
+    assert.match(def.map, /^[\n.#B=\-^~*%hCPF?]+$/, 'only known tile characters');
     assert.equal((def.map.match(/P/g) ?? []).length, 1, 'exactly one start');
     assert.equal((def.map.match(/F/g) ?? []).length, 1, 'exactly one finish');
     assert.ok(level.finish.y < level.start.y, 'the summit is above the start');
@@ -23,6 +23,39 @@ for (const level of LEVELS) {
     assert.equal(level.places[0].col, 0, 'the route starts at a named place');
   });
 }
+
+test('Blencathra teaches every move with signposts before its first hazard', () => {
+  const level = LEVELS[0];
+  const words = level.signs.map((s) => s.text);
+  for (const s of level.signs) assert.ok(s.text, `signpost at column ${s.x / TILE} has words`);
+  const before = (pattern) => level.signs.findIndex((s) => pattern.test(s.text));
+  for (const move of [/\{jump\}/, /kick/, /\{grab\}/, /[Ll]oose/, /\{dash\}/, /wind/]) assert.ok(before(move) >= 0, `a sign mentions ${move}`);
+  // The first stretch is safe: no sharp rocks, water or open drops
+  const firstHazard = Math.min(
+    ...[...level.def.map.split('\n').entries()].flatMap(([, row]) => [row.indexOf('^'), row.indexOf('~')].filter((i) => i >= 0)),
+  );
+  assert.ok(level.signs.filter((s) => s.x / TILE < firstHazard).length >= 6, `six signs before column ${firstHazard}`);
+  assert.ok(words.every((w) => w.length <= 110), 'signs stay short');
+});
+
+test('sign words name actions the game can show controls for', () => {
+  for (const level of LEVELS) {
+    for (const s of level.signs) {
+      for (const [, action] of s.text.matchAll(/\{(\w+)\}/g)) assert.ok(['jump', 'dash', 'grab', 'up'].includes(action), `{${action}} on ${level.def.name}`);
+    }
+  }
+});
+
+test('stitch pairs each signpost with its words, and rejects a miscount', () => {
+  const { signs } = stitch([{ name: 'A', signs: ['one', 'two'], map: '.?..?.\n######' }, { name: 'B', signs: ['three'], map: '..?\n###' }]);
+  assert.deepEqual(signs, [
+    { col: 1, text: 'one' },
+    { col: 4, text: 'two' },
+    { col: 8, text: 'three' },
+  ]);
+  assert.throws(() => stitch([{ signs: ['one'], map: '.?.?\n####' }]), /2 signposts but 1 signs/);
+  assert.throws(() => stitch([{ signs: ['one', 'two'], map: '.?.\n.?.\n###' }]), /two signposts in one column/);
+});
 
 test('each fell has a storage key that changes when its map does', async () => {
   const { hashString } = await import('../src/rng.js');

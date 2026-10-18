@@ -44,12 +44,15 @@ Every character is one 8×8 tile:
 | `*` | Kendal mint cake: refills dash and stamina |
 | `C` | Cairn checkpoint (also a split) |
 | `h` | A Herdwick sheep (scenery only) |
+| `?` | A signpost with a tip (scenery; its words come from the section's `signs`) |
 | `P` | Start (exactly one) |
 | `F` | Summit: the finish (exactly one) |
 
 Section names appear on screen (and are announced) as the runner reaches them, and each cairn takes the name of the section it stands in. A section with `name: null` continues the place before it.
 
-A new fell also needs an entry in `LEVEL_DEFS` in `src/levels/index.js`, with its route description, height, grade, summit marker (`ring`, `pillar` or `cairn-pillar`) and `needsDash: true` if a gap can only be crossed by dashing.
+A section can also carry `signs: ['…']`, one tip per `?` in its map, read left to right (one signpost per column). The tip shows, and is read out, as the runner passes. Write `{jump}`, `{dash}`, `{grab}` or `{up}` for a control, and the game fills in the player's own key, gamepad button or touch button. Keep tips to a sentence or two. Blencathra's opening at Scales uses them to teach every move before the first hazard.
+
+A new fell also needs an entry in `LEVEL_DEFS` in `src/levels/index.js`, with its route description, height, grade, summit marker (`ring`, `pillar` or `cairn-pillar`), its `reference` time from `npm run par`, and `needsDash: true` if a gap can only be crossed by dashing.
 
 ### Fair, readable levels
 
@@ -73,7 +76,7 @@ If you edit a map, stored best times for that fell retire automatically: records
 
 If the solver gets stuck somewhere a human clearly could pass, it may need a new script. Add one in `buildScripts` rather than weakening the checks.
 
-`npm run par` (or `node tools/par.js <fell>`) finds a near-optimal calm-weather route with A* search and prints when it reaches each place and cairn. Use it to check length and cairn spacing.
+`npm run par` (or `node tools/par.js <fell>`) finds a near-optimal calm-weather route with A* search and prints when it reaches each place and cairn. Use it to check length and cairn spacing. It also prints the gold, silver and bronze target times (1.35, 2 and 3 times the reference, see `src/targets.js`), and fails if a fell's `reference` in `LEVEL_DEFS` no longer matches, so update it whenever you change a map.
 
 ## Checking the interface
 

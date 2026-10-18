@@ -1,7 +1,7 @@
 import { Audio, CAPTIONS } from './audio.js';
 import { FixedClock } from './clock.js';
 import { DIFFICULTIES, STEP, VESTS, byId } from './config.js';
-import { ACTION_LABELS, ACTIONS, DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS, Input, PAD_ACTIONS, keyName, padName } from './input.js';
+import { ACTION_LABELS, ACTIONS, DEFAULT_PAD_BINDINGS, Input, PAD_ACTIONS, keyName, padName } from './input.js';
 import { LEVELS, levelById } from './levels/index.js';
 import { NO_INPUT, ST } from './player.js';
 import { Renderer } from './render.js';
@@ -10,6 +10,7 @@ import { RouteMap } from './routemap.js';
 import { codeToSeed, dailySeed, randomSeed, seedToCode } from './rng.js';
 import { Run, formatTime, isAssisted, speakTime } from './run.js';
 import { clearRecords, getGhost, getRecord, loadLastSetup, loadSettings, saveLastSetup, saveSettings, submitRun } from './storage.js';
+import { formatTarget, medalFor, nextTarget, speakTarget, targetsFor } from './targets.js';
 import { createWeather, toMph, windWord } from './weather.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -116,11 +117,14 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Signpost tips have a live region of their own, so a tip and a place name
+// or the run's opening line can't wipe each other out.
 const announcer = $('#announcer');
-function announce(text, { force = false } = {}) {
+const tipAnnouncer = $('#tip-announcer');
+function announce(text, { force = false, region = announcer } = {}) {
   if (!settings.announce && !force) return;
-  announcer.textContent = '';
-  setTimeout(() => (announcer.textContent = text), 50);
+  region.textContent = '';
+  setTimeout(() => (region.textContent = text), 50);
 }
 
 // ---------------------------------------------------------------------------
@@ -139,17 +143,25 @@ function radioCard(name, value, checked, inner) {
   return label;
 }
 
-// Unassisted and assisted bests side by side: assisted times are kept apart,
-// not hidden.
-function bestLine(levelKey) {
-  const parts = DIFFICULTIES.map((d) => {
-    const rec = getRecord(levelKey, d.id);
-    return `${d.name}: ${rec?.best ? formatTime(rec.best.frames) : '–'}`;
-  });
-  const assisted = DIFFICULTIES.map((d) => [d, getRecord(levelKey, d.id, true)])
+// Medals are named, not just coloured, and assisted ones say so.
+const medalBadge = (medal, assisted = false) => `<span class="medal medal-${medal.id}">${medal.name}${assisted ? ' (assisted)' : ''}</span>`;
+
+function bestTime(level, rec, assisted = false) {
+  if (!rec?.best) return '–';
+  const medal = medalFor(level.def, rec.best.frames);
+  return `${formatTime(rec.best.frames)}${medal ? ` ${medalBadge(medal, assisted)}` : ''}`;
+}
+
+// Target times, then unassisted and assisted bests side by side: assisted
+// times are kept apart, not hidden.
+function bestLine(level) {
+  const nb = (text) => `<span class="nb">${text}</span>`;
+  const targets = targetsFor(level.def).map((t) => nb(`${t.name} ${formatTarget(t.frames)}`));
+  const parts = DIFFICULTIES.map((d) => nb(`${d.name}: ${bestTime(level, getRecord(level.key, d.id))}`));
+  const assisted = DIFFICULTIES.map((d) => [d, getRecord(level.key, d.id, true)])
     .filter(([, rec]) => rec?.best)
-    .map(([d, rec]) => `${d.name}: ${formatTime(rec.best.frames)}`);
-  return `Best · ${parts.join(' · ')}${assisted.length ? `<br>Assisted · ${assisted.join(' · ')}` : ''}`;
+    .map(([d, rec]) => nb(`${d.name}: ${bestTime(level, rec, true)}`));
+  return `Targets · ${targets.join(' · ')}<br>Best · ${parts.join(' · ')}${assisted.length ? `<br>Assisted · ${assisted.join(' · ')}` : ''}`;
 }
 
 function renderSetup() {
@@ -163,7 +175,7 @@ function renderSetup() {
         `<span class="card-title">${l.def.name}</span>
          <span class="card-sub">${l.def.route} · ${l.def.heightM} m · ${'▲'.repeat(l.def.grade)}<span class="sr-only"> difficulty ${l.def.grade} of 3</span></span>
          <span class="card-body">${l.def.blurb}</span>
-         <span class="card-best">${bestLine(l.key)}</span>`,
+         <span class="card-best">${bestLine(l)}</span>`,
       ),
     ),
   );
@@ -380,6 +392,7 @@ const hud = {
   banner: $('#hud-banner'),
   caption: $('#hud-caption'),
   place: $('#hud-place'),
+  hint: $('#hud-hint'),
   shelter: $('#hud-wind-shelter'),
   route: $('#hud-route'),
   replay: $('#hud-replay'),
@@ -394,6 +407,14 @@ let captionTimer = 0;
 let placeTimer = 0;
 let placeIndex = 0;
 let warnedGust = -1;
+let signShown = null;
+let signsRead = new Set();
+// A dash stalls the simulation for a moment, as in Celeste (the camera and
+// weather keep drawing). Only real time passes: the run's clock counts
+// physics steps, so times and ghosts are unchanged.
+const DASH_FREEZE = 0.05;
+let freeze = 0;
+let lastCrack = -Infinity;
 const clock = new FixedClock();
 
 function startRun() {
@@ -431,6 +452,11 @@ function beginView(level, weather, vest) {
   hud.split.hidden = true;
   hud.place.hidden = true;
   hud.caption.hidden = true;
+  hud.hint.hidden = true;
+  signShown = null;
+  signsRead = new Set();
+  freeze = 0;
+  lastCrack = -Infinity;
   captionTimer = 0;
   hud.replay.hidden = true;
   hud.dashes.hidden = false;
@@ -470,7 +496,10 @@ function watchReplay({ level, ghost, difficulty, seed, vest, label }) {
 function replayStep() {
   run.update();
   const g = run.pose();
-  if (g) checkPlace(g.x);
+  if (g) {
+    checkPlace(g.x);
+    checkSign(g.x, g.y + 11);
+  }
   for (const e of run.events) {
     audio.play(e.type);
     if (e.type === 'finish') return stopReplay();
@@ -527,7 +556,9 @@ function cameraTarget() {
     return { x: g.x + 4 + g.facing * 20, y: g.y - 5 };
   }
   const p = run.player;
-  return { x: p.x + 4 + p.facing * 20 + p.vx * 0.12, y: p.y + 5 - 10 };
+  // Look further down when falling, so you can see where you'll land
+  const fall = !p.onGround && p.vy > 60 ? Math.min(40, (p.vy - 60) * 0.25) : 0;
+  return { x: p.x + 4 + p.facing * 20 + p.vx * 0.12, y: p.y + 5 - 10 + fall };
 }
 
 function pause() {
@@ -598,10 +629,17 @@ function step() {
   const inp = scripted ? (scripted.shift() ?? NO_INPUT) : input.sample();
   run.update(inp);
   checkPlace(run.player.x);
+  checkSign(run.player.x, run.player.y + run.player.h);
   renderer.handleEvents(run.events, run.player);
   for (const e of run.events) {
+    // Crossing a bridge of loose slate cracks a block a step: one warning will do
+    if (e.type === 'crack') {
+      if (run.frames - lastCrack < 18) continue;
+      lastCrack = run.frames;
+    }
     audio.play(e.type);
     if (settings.captions && CAPTIONS[e.type]) showCaption(CAPTIONS[e.type]);
+    if (e.type === 'dash' && !settings.reduceMotion && !manual) freeze = DASH_FREEZE;
     if (e.type === 'checkpoint') onCheckpoint(e);
     if (e.type === 'finish') return finishRun();
   }
@@ -620,6 +658,51 @@ function checkPlace(x) {
   hud.place.hidden = false;
   placeTimer = 2.5;
   announce(places[i].name);
+}
+
+// Signposts teach the moves. The nearest one in reach shows its tip, naming
+// the player's own key, button or touch control, and reads it out once.
+function checkSign(x, feet) {
+  let sign = null;
+  if (settings.showSigns) {
+    let bestDist = Infinity;
+    for (const s of run.level.signs) {
+      const dx = x - s.x;
+      const dy = feet - s.y;
+      if (dx > -32 && dx < 64 && dy > -64 && dy < 24 && Math.abs(dx) < bestDist) {
+        sign = s;
+        bestDist = Math.abs(dx);
+      }
+    }
+  }
+  const key = sign && `${sign.x},${input.lastDevice}`;
+  if (key === signShown) return;
+  signShown = key;
+  hud.hint.hidden = !sign;
+  if (!sign) return;
+  hud.hint.innerHTML = signText(sign.text, (name) => `<kbd>${name}</kbd>`);
+  if (!signsRead.has(sign)) {
+    signsRead.add(sign);
+    announce(signText(sign.text, (name) => name), { region: tipAnnouncer });
+  }
+}
+
+const TOUCH_NAMES = { jump: 'Jump', dash: 'Dash', grab: 'Grab', up: 'up arrow' };
+
+function controlName(action) {
+  if (input.lastDevice === 'touch') return TOUCH_NAMES[action] ?? action;
+  if (input.lastDevice === 'gamepad') {
+    if (action === 'up') return 'up on the stick';
+    const button = input.padBindings[action]?.[0];
+    return button == null ? 'unbound' : padName(button);
+  }
+  return keyName(input.bindings[action]?.[0]);
+}
+
+function signText(text, wrap) {
+  // With grab set to toggle, one press holds on
+  if (settings.grabMode === 'toggle') text = text.replace('Hold {grab}', 'Press {grab}');
+  return text.replace(/\{(\w+)\}/g, (_, action) => wrap(controlName(action)));
 }
 
 // A spoken summary on demand, for players who can't see the HUD.
@@ -713,6 +796,10 @@ function renderResults({ improved, previous }) {
     ['Seed', seedToCode(run.seed)],
     ['Weather', `${run.difficulty.name}: ${run.weather.describe()}`],
   ];
+  const medal = medalFor(level.def, frames);
+  const next = nextTarget(level.def, frames);
+  const aim = next && `${next.name} is ${formatTarget(next.frames)}`;
+  rows.splice(3, 0, ['Medal', medal ? `${medalBadge(medal, run.assisted)}${aim ? ` <small>${aim}</small>` : ''}` : `None yet <small>${aim}</small>`]);
   if (run.assisted) rows.push(['Board', 'Assisted']);
   $('#results-stats').innerHTML = rows.map(([k, v]) => `<div${k === 'Weather' ? ' class="span"' : ''}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
 
@@ -735,6 +822,8 @@ function renderResults({ improved, previous }) {
   let msg = `Summit! ${level.def.name} in ${speakTime(frames)} with ${run.deaths} fall${run.deaths === 1 ? '' : 's'}.`;
   if (improved && previous) msg += ` New personal best by ${speakTime(previous.frames - frames)}.`;
   else if (!improved) msg += ` ${speakTime(frames - previous.frames)} behind your best.`;
+  msg += medal ? ` ${medal.name} time${run.assisted ? ', assisted' : ''}.` : '';
+  if (next) msg += ` ${next.name} is ${speakTarget(next.frames)}.`;
   announce(msg);
 }
 
@@ -884,6 +973,7 @@ function drawAttract(dt) {
 let touchUsed = false;
 addEventListener('touchstart', () => {
   touchUsed = true;
+  input.lastDevice = 'touch';
   updateTouchVisibility();
 }, { passive: true });
 
@@ -956,10 +1046,13 @@ function frame(now) {
   input.pollPads();
 
   const live = mode === 'playing' || mode === 'replay';
-  if (live) {
+  if (live && freeze > 0) {
+    freeze -= dt;
+    clock.reset();
+  } else if (live) {
     const steps = clock.advance(dt, mode === 'replay' ? 1 : Number(settings.speed));
     const before = mode;
-    for (let i = 0; i < steps && mode === before; i++) step();
+    for (let i = 0; i < steps && mode === before && freeze <= 0; i++) step();
   }
 
   if (run && mode !== 'menu') {

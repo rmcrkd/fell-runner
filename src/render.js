@@ -331,6 +331,10 @@ export class Renderer {
   handleEvents(events, player) {
     const cx = player.x + 4;
     const cy = player.y + player.h;
+    // Grit scraped off the crag while wall sliding
+    if (player.state === ST.NORMAL && player.wallSlideDir && player.vy > 30 && Math.random() < 0.3) {
+      this.dust(player.wallSlideDir > 0 ? player.x + player.w : player.x, player.y + 4 + Math.random() * 6, 1);
+    }
     for (const e of events) {
       if (e.type === 'land' || e.type === 'jump' || e.type === 'walljump') this.dust(cx, cy, e.type === 'land' ? 5 : 3);
       if (e.type === 'dash') this.addShake(1.5);
@@ -659,6 +663,27 @@ export class Renderer {
         ctx.fillRect(x + 5, y - 20, 5, 3);
         ctx.fillRect(x + 5, y - 17, 3, 1);
       }
+    }
+
+    // Wooden fingerposts, pointing up the route
+    for (const sign of lvl.signs) {
+      const x = sign.x - camX;
+      const y = sign.y - camY;
+      if (x < -12 || x > VIEW_W + 12) continue;
+      ctx.fillStyle = pal.outline ?? '#3a2a1a';
+      ctx.fillRect(x + 3, y - 10, 2, 10);
+      ctx.fillRect(x - 1, y - 15, 9, 6);
+      ctx.fillRect(x + 8, y - 14, 1, 4);
+      ctx.fillRect(x + 9, y - 13, 1, 2);
+      ctx.fillStyle = pal.ledge;
+      ctx.fillRect(x, y - 14, 8, 4);
+      ctx.fillRect(x + 8, y - 13, 1, 2);
+      ctx.fillStyle = pal.ledgeLight;
+      ctx.fillRect(x, y - 14, 8, 1);
+      // Lettering
+      ctx.fillStyle = pal.outline ?? '#3a2a1a';
+      ctx.fillRect(x + 1, y - 12, 2, 1);
+      ctx.fillRect(x + 4, y - 12, 3, 1);
     }
 
     lvl.cakes.forEach((cake, i) => {

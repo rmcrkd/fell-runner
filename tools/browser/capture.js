@@ -77,6 +77,10 @@ async function screenshot(name, { setup, place, after = 0, viewport = { width: 1
 
 // --- Gameplay screenshots, one per fell -----------------------------------
 
+// The signposted opening at Scales, on a calm day, with a tip showing
+const scales = { levelId: 'blencathra', difficultyId: 'none', vestId: 'ridgeline', seed: 1 };
+await screenshot('scales.png', { setup: scales, place: 'Scales', after: 100 });
+
 const blencathra = { levelId: 'blencathra', difficultyId: 'normal', vestId: 'ridgeline', seed: findSeed('blencathra', 'normal', (w) => w.precipType === 'rain' && w.precip > 0.3 && w.fog < 0.2 && w.dir > 0) };
 await screenshot('blencathra.png', { setup: blencathra, place: 'Sharp Edge', after: 50 });
 

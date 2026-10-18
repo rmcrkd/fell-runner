@@ -1,6 +1,7 @@
 import { STEP } from './config.js';
 import { GhostPlayback } from './ghost.js';
 import { overlaps } from './level.js';
+import { Player, ST } from './player.js';
 import { createWeather } from './weather.js';
 
 // Watches a saved ghost back in the weather it was run in. It offers the
@@ -24,6 +25,13 @@ export class Replay {
     this.wind = this.weather.windAt(0);
     this.checkpoint = { index: -1 };
     this.events = [];
+    // Ghosts don't record the loose rock, so rebuild it from where the
+    // recorded runner stood and climbed, with the Player's own rules.
+    this.rock = { level, loose: new Float32Array(level.loose.length), touching: [], events: [], w: 8, h: 11 };
+  }
+
+  get loose() {
+    return this.rock.loose;
   }
 
   get time() {
@@ -41,6 +49,12 @@ export class Replay {
       this.finished = true;
       this.events.push({ type: 'finish' });
       return;
+    }
+    if (this.level.loose.length) {
+      this.rock.events.length = 0;
+      Object.assign(this.rock, { x: pose.x, y: pose.y, facing: pose.facing, onGround: !pose.air, state: pose.climb ? ST.CLIMB : ST.NORMAL });
+      Player.prototype.updateLoose.call(this.rock, STEP);
+      if (pose.dead) this.rock.loose.fill(0);
     }
     if (pose.dead && !before?.dead) {
       this.deaths++;

@@ -15,9 +15,9 @@
 import { STEP } from '../src/config.js';
 import { overlaps } from '../src/level.js';
 import { Player, ST } from '../src/player.js';
+import { CAKE_RESPAWN_FRAMES } from '../src/run.js';
 
 const MAX_FRAMES = 170;
-const CAKE_RESPAWN_FRAMES = 150; // matches CAKE_RESPAWN in run.js
 const NEUTRAL = Object.freeze({ moveX: 0, moveY: 0, jump: false, jumpPressed: false, dashPressed: false, grab: false });
 
 function inputs(moveX = 0, moveY = 0, jump = false, jumpPressed = false, dashPressed = false, grab = false) {
@@ -181,7 +181,8 @@ export function solve(level, { vest, wind = 0, grip = 1, allowDash = false, fast
   const remaining = (x) => (Math.max(0, goalX - x) / 240) * 60 * 1.3;
   const startKey = key(player);
   if (!fastest) seen.add(startKey);
-  queue.push({ key: startKey, state: player.snapshot(), frame: 0, priority: 0, cakes: Array.from(cakeReady) });
+  // The clock only starts on the first move, so a route can't open with a wait
+  queue.push({ key: startKey, state: player.snapshot(), frame: 0, priority: 0, cakes: Array.from(cakeReady), waited: true });
   const windVaries = typeof wind === 'function';
 
   let expanded = 0;

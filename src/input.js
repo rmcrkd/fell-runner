@@ -71,8 +71,16 @@ export class Input {
     addEventListener('blur', () => this.down.clear());
   }
 
+  // Saved maps from before an action existed lack it: fill those in with
+  // default keys that aren't already doing something else.
   get bindings() {
-    return this.settings.bindings ?? DEFAULT_BINDINGS;
+    const saved = this.settings.bindings;
+    if (!saved) return DEFAULT_BINDINGS;
+    if (ACTIONS.every((a) => saved[a])) return saved;
+    const used = new Set(Object.values(saved).flat());
+    const full = { ...saved };
+    for (const a of ACTIONS) full[a] ??= DEFAULT_BINDINGS[a].filter((k) => !used.has(k));
+    return full;
   }
 
   get padBindings() {

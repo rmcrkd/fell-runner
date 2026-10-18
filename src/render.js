@@ -527,7 +527,7 @@ export class Renderer {
     const lvl = this.level;
     if (!lvl.loose.length) return;
     const pal = this.pal;
-    const state = run?.player?.loose;
+    const state = run?.player?.loose ?? run?.loose;
     lvl.loose.forEach((b, i) => {
       const x = b.tx * TILE - camX;
       const y = b.ty * TILE - camY;

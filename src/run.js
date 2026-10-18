@@ -5,7 +5,8 @@ import { Player, ST } from './player.js';
 import { createWeather } from './weather.js';
 
 const RESPAWN_DELAY = 0.5;
-const CAKE_RESPAWN = 2.5;
+// Whole physics steps, so the timing is exact (tools/solver.js matches it)
+export const CAKE_RESPAWN_FRAMES = 150;
 
 // One attempt at one fell. Owns the player, weather, clock, checkpoints,
 // splits and ghost recording, and knows nothing about drawing or input
@@ -66,7 +67,7 @@ export class Run {
     }
 
     for (let i = 0; i < this.cakeTimers.length; i++) {
-      if (this.cakeTimers[i] > 0) this.cakeTimers[i] -= STEP;
+      if (this.cakeTimers[i] > 0) this.cakeTimers[i]--;
     }
 
     this.recorder.push(p);
@@ -80,7 +81,7 @@ export class Run {
 
     level.cakes.forEach((cake, i) => {
       if (this.cakeTimers[i] <= 0 && overlaps(box, cake.rect) && p.refill()) {
-        this.cakeTimers[i] = CAKE_RESPAWN;
+        this.cakeTimers[i] = CAKE_RESPAWN_FRAMES;
         this.events.push({ type: 'cake', index: i });
       }
     });

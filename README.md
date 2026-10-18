@@ -193,6 +193,10 @@ Lakeland's mountain rescue teams are unpaid volunteers, on call around the clock
 - **Algorithms:** Mulberry32 random numbers by Tommy Ettinger; FNV-1a hashing by Glenn Fowler, Landon Curt Noll and Kiem-Phong Vo; and A* search by Peter Hart, Nils Nilsson and Bertram Raphael, which times the reference routes.
 - **Development tools:** accessibility audited with [axe-core](https://github.com/dequelabs/axe-core) by Deque, screenshots captured with [Puppeteer](https://pptr.dev/), images decoded with [pngjs](https://github.com/pngjs/pngjs), and the GIF encoded with [gifenc](https://github.com/mattdesl/gifenc) by Matt DesLauriers. None of these ship with the game.
 
+## Citing
+
+If you refer to Fell Runner in a talk, paper or article, GitHub's **Cite this repository** button (from [CITATION.cff](CITATION.cff)) gives a ready-made citation.
+
 ## Licence
 
 [MIT](LICENSE) © Ryan McCrickerd

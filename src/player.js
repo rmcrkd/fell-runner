@@ -4,9 +4,13 @@ import { LOOSE_CRUMBLE, LOOSE_RESPAWN } from './level.js';
 // A Celeste-style platformer controller: integer positions with sub-pixel
 // remainders, coyote time, jump buffering, variable jump height, wall
 // slides, wall jumps, stamina-limited climbing, eight-way dashes, corner
-// correction, and super/hyper jumps for players who go looking for them.
+// correction, crouching, and super, hyper and ultra moves for players who go
+// looking for them.
 
 export const ST = { NORMAL: 0, CLIMB: 1, DASH: 2, DEAD: 3 };
+
+// The runner's height standing; crouched, it's PHYS.duckHeight
+export const STAND_H = 11;
 
 const approach = (v, target, amount) => (v > target ? Math.max(v - amount, target) : Math.min(v + amount, target));
 const sign = (v) => (v > 0 ? 1 : v < 0 ? -1 : 0);
@@ -17,7 +21,7 @@ export class Player {
   constructor(level, { vest, assist = {} } = {}) {
     this.level = level;
     this.w = 8;
-    this.h = 11;
+    this.h = STAND_H;
     this.vest = vest ?? { runMult: 1, accelMult: 1, staminaMult: 1, windMult: 1, dashes: 1 };
     this.assist = assist;
     this.maxRun = P.maxRun * this.vest.runMult;
@@ -35,6 +39,8 @@ export class Player {
 
   // (x, bottom) is where the runner's feet go.
   spawn(x, bottom) {
+    this.ducking = false;
+    this.h = STAND_H;
     this.x = Math.round(x);
     this.y = Math.round(bottom - this.h);
     this.rx = 0;
@@ -63,6 +69,7 @@ export class Player {
     this.dashTimer = 0;
     this.dashDir = { x: 0, y: 0 };
     this.dashOnGround = false;
+    this.dashAttackTimer = 0;
     this.climbNoMoveTimer = 0;
     this.noWindTimer = 0;
     this.runDistance = 0;
@@ -100,6 +107,37 @@ export class Player {
     return this.collide(0, 1) || this.level.ledgeAt(this.x, this.w, this.y + this.h);
   }
 
+  // Crouching keeps the feet where they are and lowers the head.
+  duck() {
+    if (this.ducking) return;
+    this.ducking = true;
+    this.y += STAND_H - P.duckHeight;
+    this.h = P.duckHeight;
+  }
+
+  canStand(dx = 0) {
+    return !this.ducking || !this.level.solidAt(this.x + dx, this.y + this.h - STAND_H, this.w, STAND_H, this.loose);
+  }
+
+  // Stands up if there's headroom, and says whether the runner is standing.
+  stand() {
+    if (!this.ducking) return true;
+    if (!this.canStand()) return false;
+    this.ducking = false;
+    this.y -= STAND_H - P.duckHeight;
+    this.h = STAND_H;
+    return true;
+  }
+
+  // Stuck crouching under a low roof, edge out towards headroom, as Celeste does.
+  duckCorrect(dt) {
+    for (let i = P.duckCorrectCheck; i > 0; i--) {
+      for (const d of [1, -1]) {
+        if (this.canStand(i * d)) return this.moveH(d * P.duckCorrectSlide * dt, false);
+      }
+    }
+  }
+
   update(inp, dt, wind = 0, grip = 1) {
     this.events.length = 0;
     if (this.state === ST.DEAD) return;
@@ -107,6 +145,7 @@ export class Player {
     this.jumpBuffer = inp.jumpPressed ? P.jumpBufferTime : this.jumpBuffer - dt;
     this.dashBuffer = inp.dashPressed ? P.dashBufferTime : this.dashBuffer - dt;
     this.dashCooldown -= dt;
+    if (this.dashAttackTimer > 0) this.dashAttackTimer -= dt;
     this.dashRefillCooldown -= dt;
     if (this.varJumpTimer > 0) this.varJumpTimer -= dt;
     if (this.forceMoveXTimer > 0) this.forceMoveXTimer -= dt;
@@ -158,7 +197,7 @@ export class Player {
 
   normalUpdate(inp, dt, moveX, moveY, grip) {
     // Grab a crag face
-    if (inp.grab && !this.tired && this.vy >= 0 && sign(this.vx) !== -this.facing) {
+    if (inp.grab && !this.tired && !this.ducking && this.vy >= 0 && sign(this.vx) !== -this.facing) {
       if (this.climbCheck(this.facing)) {
         this.enterClimb();
         return;
@@ -170,11 +209,23 @@ export class Player {
       return;
     }
 
+    // Crouch: hold down on the ground. You stay crouched as you rise, and
+    // stand once there's headroom: on the way down, or back on the ground
+    // without holding down.
+    if (this.ducking) {
+      if (!this.onGround && this.vy > 0) this.stand();
+      else if (this.onGround && moveY !== 1 && !this.stand() && this.vx === 0) this.duckCorrect(dt);
+    } else if (this.onGround && moveY === 1 && this.vy >= 0) {
+      this.duck();
+    }
+
     if (moveX !== 0) this.facing = moveX;
 
-    // Run
+    // Run, or slide to a stop when crouched
     const mult = this.onGround ? 1 : P.airMult;
-    if (Math.abs(this.vx) > this.maxRun && sign(this.vx) === moveX) {
+    if (this.ducking && this.onGround) {
+      this.vx = approach(this.vx, 0, P.duckFriction * grip * dt);
+    } else if (Math.abs(this.vx) > this.maxRun && sign(this.vx) === moveX) {
       this.vx = approach(this.vx, this.maxRun * moveX, P.runReduce * mult * dt);
     } else {
       let accel = this.runAccel * mult;
@@ -243,6 +294,7 @@ export class Player {
   }
 
   wallJump(dir, moveX) {
+    this.stand();
     this.jumpBuffer = 0;
     this.jumpGrace = 0;
     this.varJumpTimer = P.varJumpTime;
@@ -269,8 +321,10 @@ export class Player {
     }
   }
 
+  // A super jump made from a crouch is a hyper: longer and lower.
   superJump() {
-    const hyper = this.dashDir.y > 0;
+    const hyper = this.ducking || this.dashDir.y > 0;
+    this.stand();
     this.jumpBuffer = 0;
     this.jumpGrace = 0;
     this.varJumpTimer = P.varJumpTime;
@@ -410,11 +464,15 @@ export class Player {
     this.vx = this.dashDir.x * P.dashSpeed;
     this.vy = this.dashDir.y * P.dashSpeed;
     this.dashOnGround = false;
+    this.dashAttackTimer = P.dashAttackTime;
     if (this.onGround && this.dashDir.x !== 0 && this.dashDir.y > 0) {
-      // Down-diagonal dash along the ground becomes a fast slide
+      // Down-diagonal dash along the ground becomes a fast, crouched slide
       this.vy = 0;
       this.vx = sign(this.dashDir.x) * P.dashSpeed * Math.SQRT1_2 * P.groundDashSpeedMult;
       this.dashOnGround = true;
+      this.duck();
+    } else if (this.dashDir.y < 0) {
+      this.stand();
     }
     if (sign(before) === sign(this.vx) && Math.abs(before) > Math.abs(this.vx)) this.vx = before;
     this.dashTimer = P.dashTime;
@@ -425,7 +483,7 @@ export class Player {
   dashUpdate(inp, dt) {
     this.dashTimer -= dt;
     if (this.jumpBuffer > 0) {
-      if (this.dashDir.y >= 0 && this.dashDir.x !== 0 && (this.onGround || this.jumpGrace > 0)) {
+      if (this.dashDir.y >= 0 && this.dashDir.x !== 0 && (this.onGround || this.jumpGrace > 0) && this.canStand()) {
         this.superJump();
         return;
       }
@@ -513,7 +571,15 @@ export class Player {
         this.varJumpTimer = 0;
       }
       this.ry = 0;
-      if (s > 0 && this.state === ST.DASH && this.dashDir.y > 0) this.dashOnGround = true;
+      if (s > 0 && this.dashDir.y > 0 && !this.dashOnGround && (this.state === ST.DASH || this.dashAttackTimer > 0)) {
+        // Ultra: a down-diagonal dash that lands, during it or just after,
+        // crouches you and gains speed
+        if (this.dashDir.x !== 0) {
+          this.vx *= P.groundDashSpeedMult;
+          this.duck();
+        }
+        this.dashOnGround = true;
+      }
       this.vy = 0;
       return;
     }
@@ -534,9 +600,11 @@ export class Player {
       } else if (v < 0) {
         loose[i] = Math.min(0, v + dt);
         if (loose[i] === 0) {
-          // Don't let rock settle back on top of the runner
+          // Don't let rock settle back on top of the runner, or where a
+          // crouching runner would need it gone to stand up
           const b = level.loose[i];
-          if (this.x < b.tx * 8 + 8 && this.x + this.w > b.tx * 8 && this.y < b.ty * 8 + 8 && this.y + this.h > b.ty * 8) loose[i] = -dt;
+          const top = this.y + this.h - STAND_H;
+          if (this.x < b.tx * 8 + 8 && this.x + this.w > b.tx * 8 && top < b.ty * 8 + 8 && this.y + this.h > b.ty * 8) loose[i] = -dt;
         }
       }
     }

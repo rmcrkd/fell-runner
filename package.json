@@ -1,6 +1,6 @@
 {
   "name": "fell-runner",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A Celeste-style speedrunning platformer over three notorious Lake District fells, with real routes, seeded weather, wind physics, ghosts and full accessibility. Free to play in your browser.",
   "keywords": [
     "game",

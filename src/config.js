@@ -66,6 +66,14 @@ export const PHYS = {
   dashBufferTime: 0.08,
   dashCornerCorrection: 4,
   groundDashSpeedMult: 1.2,
+  // How long after starting a dash a landing still counts as an ultra
+  dashAttackTime: 0.3,
+
+  // Crouching: a hitbox 6px tall instead of 11, sliding to a stop
+  duckHeight: 6,
+  duckFriction: 500,
+  duckCorrectCheck: 4,
+  duckCorrectSlide: 50,
 
   // Wind moves the runner directly, like Celeste's wind. Feet on the ground
   // give some purchase; hanging on a crag shelters you completely.

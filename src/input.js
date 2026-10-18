@@ -8,7 +8,7 @@ export const ACTION_LABELS = {
   left: 'Move left',
   right: 'Move right',
   up: 'Up / climb',
-  down: 'Down',
+  down: 'Down / crouch',
   jump: 'Jump',
   dash: 'Dash',
   grab: 'Grab / climb',

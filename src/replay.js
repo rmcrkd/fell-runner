@@ -1,7 +1,7 @@
 import { STEP } from './config.js';
 import { GhostPlayback } from './ghost.js';
 import { overlaps } from './level.js';
-import { Player, ST } from './player.js';
+import { Player, ST, STAND_H } from './player.js';
 import { createWeather } from './weather.js';
 
 // Watches a saved ghost back in the weather it was run in. It offers the
@@ -27,7 +27,7 @@ export class Replay {
     this.events = [];
     // Ghosts don't record the loose rock, so rebuild it from where the
     // recorded runner stood and climbed, with the Player's own rules.
-    this.rock = { level, loose: new Float32Array(level.loose.length), touching: [], events: [], w: 8, h: 11 };
+    this.rock = { level, loose: new Float32Array(level.loose.length), touching: [], events: [], w: 8, h: STAND_H };
   }
 
   get loose() {
@@ -52,7 +52,7 @@ export class Replay {
     }
     if (this.level.loose.length) {
       this.rock.events.length = 0;
-      Object.assign(this.rock, { x: pose.x, y: pose.y, facing: pose.facing, onGround: !pose.air, state: pose.climb ? ST.CLIMB : ST.NORMAL });
+      Object.assign(this.rock, { x: pose.x, y: pose.y, h: pose.h, facing: pose.facing, onGround: !pose.air, state: pose.climb ? ST.CLIMB : ST.NORMAL });
       Player.prototype.updateLoose.call(this.rock, STEP);
       if (pose.dead) this.rock.loose.fill(0);
     }
@@ -60,7 +60,7 @@ export class Replay {
       this.deaths++;
       this.events.push({ type: 'died' });
     }
-    const box = { x: pose.x, y: pose.y, w: 8, h: 11 };
+    const box = { x: pose.x, y: pose.y, w: 8, h: pose.h };
     for (const cairn of this.level.cairns) {
       if (cairn.index > this.checkpoint.index && overlaps(box, cairn.rect)) {
         this.checkpoint = { index: cairn.index };

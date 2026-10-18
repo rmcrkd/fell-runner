@@ -1,4 +1,5 @@
-import { ST } from './player.js';
+import { PHYS } from './config.js';
+import { ST, STAND_H } from './player.js';
 
 // Ghosts store one sample per fixed physics step: x and y as 16-bit
 // integers plus a byte of flags. A one-minute run is about 18 KB.
@@ -9,6 +10,7 @@ const F_DEAD = 2;
 const F_AIR = 4;
 const F_CLIMB = 8;
 const F_DASH = 16;
+const F_DUCK = 32;
 
 export class GhostRecorder {
   constructor() {
@@ -35,6 +37,7 @@ export class GhostRecorder {
     if (!player.onGround) f |= F_AIR;
     if (player.state === ST.CLIMB) f |= F_CLIMB;
     if (player.state === ST.DASH) f |= F_DASH;
+    if (player.ducking) f |= F_DUCK;
     this.buf[o + 4] = f;
     this.frames++;
   }
@@ -66,6 +69,8 @@ export class GhostPlayback {
       air: !!(f & F_AIR),
       climb: !!(f & F_CLIMB),
       dash: !!(f & F_DASH),
+      duck: !!(f & F_DUCK),
+      h: f & F_DUCK ? PHYS.duckHeight : STAND_H,
       runDistance: frame * 2,
     };
   }

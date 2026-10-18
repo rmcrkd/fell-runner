@@ -503,7 +503,7 @@ function replayStep() {
   const g = run.pose();
   if (g) {
     checkPlace(g.x);
-    checkSign(g.x, g.y + 11);
+    checkSign(g.x, g.y + g.h);
   }
   for (const e of run.events) {
     audio.play(e.type);
@@ -558,12 +558,13 @@ function setVestColours(vest) {
 function cameraTarget() {
   if (run.replay) {
     const g = run.pose();
-    return { x: g.x + 4 + g.facing * 20, y: g.y - 5 };
+    return { x: g.x + 4 + g.facing * 20, y: g.y + g.h - 16 };
   }
   const p = run.player;
-  // Look further down when falling, so you can see where you'll land
+  // Follow the feet, so crouching doesn't jolt the view, and look further
+  // down when falling, so you can see where you'll land
   const fall = !p.onGround && p.vy > 60 ? Math.min(40, (p.vy - 60) * 0.25) : 0;
-  return { x: p.x + 4 + p.facing * 20 + p.vx * 0.12, y: p.y + 5 - 10 + fall };
+  return { x: p.x + 4 + p.facing * 20 + p.vx * 0.12, y: p.y + p.h - 16 + fall };
 }
 
 function pause() {
@@ -692,12 +693,12 @@ function checkSign(x, feet) {
   }
 }
 
-const TOUCH_NAMES = { jump: 'Jump', dash: 'Dash', grab: 'Grab', up: 'up arrow' };
+const TOUCH_NAMES = { jump: 'Jump', dash: 'Dash', grab: 'Grab', up: 'up arrow', down: 'down arrow' };
 
 function controlName(action) {
   if (input.lastDevice === 'touch') return TOUCH_NAMES[action] ?? action;
   if (input.lastDevice === 'gamepad') {
-    if (action === 'up') return 'up on the stick';
+    if (action === 'up' || action === 'down') return `${action} on the stick`;
     const button = input.padBindings[action]?.[0];
     return button == null ? 'unbound' : padName(button);
   }
@@ -735,7 +736,7 @@ function exposure() {
   const p = run.player;
   if (p) return p.exposure;
   const g = run.pose();
-  return g ? run.level.exposureAt(g.x, g.y, 8, 11, Math.sign(run.wind)) : 1;
+  return g ? run.level.exposureAt(g.x, g.y, 8, g.h, Math.sign(run.wind)) : 1;
 }
 
 function feltWind() {
@@ -904,7 +905,7 @@ function updateHud(dt) {
   if (!hud.route.hidden) {
     const g = run.ghostPose();
     const you = p ? { x: p.x, y: p.y + p.h } : null;
-    routeMap.update(you ?? (g && { x: g.x, y: g.y + 11 }), g && !run.replay && settings.showGhost ? { x: g.x, y: g.y + 11 } : null, run.checkpoint.index);
+    routeMap.update(you ?? (g && { x: g.x, y: g.y + g.h }), g && !run.replay && settings.showGhost ? { x: g.x, y: g.y + g.h } : null, run.checkpoint.index);
   }
   if (placeTimer > 0 && (placeTimer -= dt) <= 0) hud.place.hidden = true;
   if (!p) {

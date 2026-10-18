@@ -8,7 +8,7 @@ import { TILE } from './config.js';
 //   %  loose rock: gives way just after you stand on or grab it, then settles back
 //   C  cairn checkpoint                        P  start
 //   F  summit marker (finish)                  .  or space: air
-//   h  a Herdwick sheep (scenery only)
+//   h  a Herdwick sheep (scenery only)        ?  a signpost with a tip (scenery only)
 export const T = { AIR: 0, SOLID: 1, LEDGE: 2, SPIKE: 3, WATER: 4, LOOSE: 5 };
 
 // Loose rock timings, in seconds
@@ -47,6 +47,7 @@ export class Level {
     this.loose = [];
     this.looseIndex = new Map();
     this.sheep = [];
+    this.signs = [];
     this.start = null;
     this.finish = null;
 
@@ -66,6 +67,7 @@ export class Level {
           this.looseIndex.set(ty * this.cols + tx, this.loose.length);
           this.loose.push({ tx, ty });
         } else if (ch === 'h') this.sheep.push({ x: px, y: py + TILE });
+        else if (ch === '?') this.signs.push({ x: px, y: py + TILE, text: '' });
         else if (ch === 'F') this.finish = { x: px, y: py + TILE, rect: { x: px - 8, y: py - 24, w: 24, h: 32 } };
       }
     }
@@ -74,6 +76,7 @@ export class Level {
     this.climb = Math.max(TILE, this.start.y - this.finish.y);
     // Checkpoints are ordered left to right, which is also the route order.
     this.cairns.sort((a, b) => a.x - b.x);
+    this.signs.sort((a, b) => a.x - b.x);
     this.cairns.forEach((c, i) => (c.index = i));
   }
 

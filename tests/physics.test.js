@@ -200,7 +200,12 @@ P.........F
   p.x = 3 * 8 + 4;
   p.y = 4 * 8 - p.h;
   const frames = (s) => Math.round(s * 60);
-  for (let f = 0; f < frames(LOOSE_CRUMBLE) - 2; f++) p.update(inp(), STEP);
+  p.update(inp(), STEP);
+  assert.ok(p.events.includes('crack'), 'you hear it crack as soon as you stand on it');
+  for (let f = 1; f < frames(LOOSE_CRUMBLE) - 2; f++) {
+    p.update(inp(), STEP);
+    assert.ok(!p.events.includes('crack'), 'it cracks once, not every step');
+  }
   assert.ok(p.onGround, 'still standing just before it goes');
   for (let f = 0; f < 6; f++) p.update(inp(), STEP);
   assert.ok(!p.onGround, 'fell through once it crumbled');

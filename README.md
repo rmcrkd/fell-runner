@@ -20,21 +20,25 @@
 
 Race from the valley floor to the summit. A good run takes about a minute; your first attempt, in a gale, will take rather longer.
 
+- **A gentle start.** Blencathra opens with a hazard-free stretch through Scales, where wooden fingerposts teach each move (jump, wall kick, climb, loose rock, dash and wind shelter) and name your own keys, buttons or touch controls.
 - **Tight, Celeste-style movement.** Coyote time, jump buffering, variable jump height, wall jumps, stamina-limited climbing, eight-way dashes and corner correction. Super jumps, hypers and wall bounces are there for players who go looking.
 - **Real routes.** Each fell follows its real path, and the places along it (Scales Tarn, the Hole-in-the-Wall, Mickledore and the rest) come up on screen as you reach them.
 - **Seeded weather.** Wind, gusts, rain, sleet, snow and hill fog all come from a seed you can see, type, randomise or share. The same seed brings the same gust at the same moment, so races are fair.
 - **Wind is physics.** It shoves you in the air and less so on the ground. It's gentler in the valley and full force on the tops, and a crag or wall on the windward side gives you shelter. You get about a second's warning of every gust.
-- **Loose rock.** Greasy slabs of slate and scree hold you for a moment, then give way. Keep moving.
+- **Loose rock.** Greasy slabs of slate and scree crack as you land, hold you for a moment, then give way. Keep moving.
 - **Three vests** trade speed against stamina, wind resistance and dashes.
+- **Target times.** Gold, silver and bronze for each fell, set from a solver-timed reference route, so you know what a good run looks like.
 - **Ghosts, splits, replays and personal bests** for every fell and weather setting, plus a route map showing you and your ghost.
 - **Challenge links** load the exact same fell, vest and storm for a friend.
 - **No build step and no runtime dependencies.** It's plain JavaScript modules and a canvas.
+
+<img src="docs/scales.png" alt="The signposted opening at Scales on a calm day: wooden fingerposts, an overhanging crag, a bridge of loose slate, and a tip explaining that loose slate gives way just after you land on it" width="100%">
 
 ## The fells
 
 | | Fell | Route | Height |
 |---|---|---|---|
-| ▲ | **Blencathra** via Sharp Edge | Scales, round Scales Fell and up Scales Beck to Scales Tarn, across the teeth of **Sharp Edge** and its polished Bad Step, up Foule Crag to Atkinson Pike and the survey ring on Hallsfell Top | 868 m |
+| ▲ | **Blencathra** via Sharp Edge | The hamlet of Scales, round Scales Fell and up Scales Beck to Scales Tarn, across the teeth of **Sharp Edge** and its polished Bad Step, up Foule Crag to Atkinson Pike and the survey ring on Hallsfell Top | 868 m |
 | ▲▲ | **Helvellyn** via Striding Edge | Glenridding, over Birkhouse Moor to the Hole-in-the-Wall, High Spying How and the crest of **Striding Edge** above Red Tarn, down the chimney, past the Gough Memorial, then the summit shelter and trig point | 950 m |
 | ▲▲▲ | **Scafell Pike** from Wasdale Head | Ford Lingmell Gill, climb the stone staircase of Brown Tongue, cross the boulders of Hollow Stones, scramble the loose scree to **Mickledore**, then the summit boulder field to the trig point on its great cairn | 978 m |
 
@@ -93,12 +97,13 @@ Fell Runner should be hard, but everyone should be able to reach the summit.
 
 - **Assist mode**, inspired by Celeste's: game speed from 50% to 100%, infinite stamina, two or infinite dashes, and invincibility. Assisted times go on their own board beside the others, so they never displace unassisted ones and are never hidden.
 - **Remappable keys and gamepad buttons.** Grab can be hold or toggle. Keyboard, gamepad and touch all work, and the touch controls fit a 320 px screen.
-- **Menus and the HUD are real HTML.** That makes them screen-reader friendly, keyboard and gamepad navigable, and zoomable. Screen readers hear place names, cairns, splits and results, and a **read out status** key speaks your time, position, the wind, gusts, dashes and stamina on demand.
+- **Menus and the HUD are real HTML.** That makes them screen-reader friendly, keyboard and gamepad navigable, and zoomable. Screen readers hear place names, signpost tips, cairns, splits, target times and results, and a **read out status** key speaks your time, position, the wind, gusts, dashes and stamina on demand.
+- **Signpost tips** are HTML too, scale with the HUD, and name the controls you're actually using. Experienced runners can turn them off.
 - **High-contrast mode, with nothing told by colour alone.** Spent dashes switch to dashed outlines, splits carry ▲/▼, reached cairns gain a flag, crumbling rock shows widening cracks and leaves a dotted outline when it falls, and the route map marks you, your ghost, cairns and the summit with different shapes.
 - **Reduce motion** removes parallax, bobbing, dash trails, shaking rock and screen shake. It's on by default if your system asks for reduced motion, and high contrast likewise follows your system setting.
 - **No flashing effects.** A tired climber shows a sweat drop instead of a flashing sprite.
 - **Weather visibility controls.** Rain and snow can be turned down or off, and you can set a maximum fog thickness.
-- **Wind you can see and hear.** A gauge shows direction, speed and shelter, there are wind streaks, a gust warning with a countdown, and stereo-panned wind audio. Optional sound captions cover the rest.
+- **Wind you can see and hear.** A gauge shows direction, speed and shelter, there are wind streaks, a gust warning with a countdown, and stereo-panned wind audio. Optional sound captions cover the rest, including the crack of loose rock about to go.
 - **Adjustable HUD size**, up to 200%.
 - **Automatic pause** when the window loses focus.
 
@@ -106,7 +111,15 @@ Every screen (menus, play, pause, results, replay and touch controls) passes an 
 
 ## Speedrunning
 
-- The clock starts on your first move and stops at the summit. Time is counted in fixed 60 Hz physics steps, so it doesn't depend on your frame rate.
+- The clock starts on your first move and stops at the summit. Time is counted in fixed 60 Hz physics steps, so it doesn't depend on your frame rate (or on the brief freeze when you dash).
+- **Target times** are the same in every weather, so a storm makes them harder:
+
+  | Fell | Gold | Silver | Bronze |
+  |---|---|---|---|
+  | Blencathra | 0:54 | 1:20 | 1:59 |
+  | Helvellyn | 0:55 | 1:21 | 2:02 |
+  | Scafell Pike | 1:01 | 1:30 | 2:15 |
+
 - Your best run on each fell and weather setting saves a **ghost** to race and **splits** for every cairn.
 - **Watch best run** replays your ghost in the weather it ran in, and **Watch this run** replays any run from the results screen.
 - **Ghost's weather** loads the seed your best ghost ran in, for a true like-for-like attempt.
@@ -148,6 +161,7 @@ src/
   level.js      tiles, collision, hazards, loose rock, and wind exposure and shelter
   levels/       each fell is a list of named sections of plain text, one character per tile
   clock.js      turns real time into fixed 60 Hz steps
+  targets.js    gold, silver and bronze times from each fell's reference route
   render.js     procedural pixel art at 320×180: parallax fells, weather, the runner, sheep
   routemap.js   the HUD's elevation profile
   ghost.js      compact ghost recordings (5 bytes per physics step)
@@ -168,7 +182,7 @@ tools/
 
 A solved storm route is then replayed frame by frame through a real `Run`, cairn by cairn, to the summit.
 
-**Every fell is about a minute long.** `npm run par` finds a near-optimal route with an A* search over the same physics. The reference routes take 36 s (Blencathra), 40 s (Helvellyn) and 45 s (Scafell Pike), which puts a skilled player at roughly 50 to 60 seconds. Cairns fall every 13 to 17 seconds of reference route.
+**Every fell is about a minute long.** `npm run par` finds a near-optimal route with an A* search over the same physics. The reference routes take 40 s (Blencathra), 40 s (Helvellyn) and 45 s (Scafell Pike), which puts a skilled player at roughly 55 to 60 seconds: the gold target is 1.35 times the reference, silver twice it and bronze three times. Cairns fall every 13 to 17 seconds of reference route.
 
 ## Contributing
 

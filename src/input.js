@@ -187,7 +187,9 @@ export class Input {
     const snap = {
       moveX: (right ? 1 : 0) - (left ? 1 : 0),
       moveY: (down ? 1 : 0) - (up ? 1 : 0),
-      jump: this.held('jump'),
+      // A tap that came and went since the last step still counts as held
+      // for one step, so it isn't cut to the smallest hop
+      jump: this.held('jump') || this.latched.has('jump'),
       jumpPressed: this.latched.has('jump'),
       dashPressed: this.latched.has('dash'),
       grab: !!grabHeld,

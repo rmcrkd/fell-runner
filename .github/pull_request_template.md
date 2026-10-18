@@ -17,5 +17,6 @@
 ## Checklist
 
 - [ ] `npm test` passes
+- [ ] After a level change, `npm run par` passes (it checks each fell's `reference`, which sets the target times) and cairns are 13 to 17 s apart
 - [ ] `npm run metadata` passes (package.json, CITATION.cff and the GitHub About box agree)
 - [ ] README, CONTRIBUTING and screenshots are up to date with the change

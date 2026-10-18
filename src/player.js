@@ -541,13 +541,19 @@ export class Player {
       }
     }
     const t = this.touching;
-    if (this.onGround) {
-      for (const i of level.looseIn(this.x, this.y + this.h, this.w, 1, t)) if (loose[i] === 0) loose[i] = LOOSE_CRUMBLE;
-    }
+    let cracked = false;
+    const crack = (i) => {
+      if (loose[i] !== 0) return;
+      loose[i] = LOOSE_CRUMBLE;
+      cracked = true;
+    };
+    if (this.onGround) for (const i of level.looseIn(this.x, this.y + this.h, this.w, 1, t)) crack(i);
     if (this.state === ST.CLIMB) {
       const fx = this.facing > 0 ? this.x + this.w : this.x - 1;
-      for (const i of level.looseIn(fx, this.y, 1, this.h, t)) if (loose[i] === 0) loose[i] = LOOSE_CRUMBLE;
+      for (const i of level.looseIn(fx, this.y, 1, this.h, t)) crack(i);
     }
+    // A warning you can hear (and read, with captions) as well as see
+    if (cracked) this.events.push('crack');
   }
 
   checkHazards() {

@@ -61,3 +61,26 @@ test('times are formatted for display and for screen readers', () => {
   assert.equal(speakTime(60 * 63 + 30), '1 minute 3.50 seconds');
   assert.equal(speakTime(90), '1.50 seconds');
 });
+
+test('a mint cake comes back exactly 150 steps after it is eaten', () => {
+  const lvl = new Level({
+    id: 'cake-test',
+    map: `
+....................
+.....*..............
+P..................F
+####################
+`,
+  });
+  const run = new Run({ ...base, level: lvl });
+  run.update(inp({ moveX: 1 }));
+  run.player.dashes = 0;
+  run.player.x = 5 * 8;
+  run.player.y = 1 * 8;
+  run.update(inp({ moveX: 0, moveY: 0, jump: false }));
+  assert.ok(!run.cakeVisible(0), 'eaten');
+  for (let i = 1; i < 149; i++) run.update(inp());
+  assert.ok(!run.cakeVisible(0), 'not back after 149 steps');
+  run.update(inp());
+  assert.ok(run.cakeVisible(0), 'back after 150 steps');
+});

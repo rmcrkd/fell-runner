@@ -59,6 +59,7 @@ let run = null;
 const screenStack = [];
 
 function showScreen(id, { push = true } = {}) {
+  cancelCapture();
   const current = $$('.screen').find((s) => !s.hidden);
   if (push && current && current.id !== `screen-${id}`) screenStack.push(current.id.replace('screen-', ''));
   $$('.screen').forEach((s) => (s.hidden = s.id !== `screen-${id}`));
@@ -73,7 +74,15 @@ function showScreen(id, { push = true } = {}) {
   $('#menus').scrollTop = 0;
 }
 
+// Leaving the controls table abandons any half-finished remap, so it can't
+// grab a key or button later.
+function cancelCapture() {
+  input.capture = null;
+  input.padCapture = null;
+}
+
 function hideScreens() {
+  cancelCapture();
   $$('.screen').forEach((s) => (s.hidden = true));
   $('#menus').classList.add('empty');
   screenStack.length = 0;
@@ -257,13 +266,13 @@ function renderSettings() {
 }
 
 function renderBindings() {
-  const bindings = settings.bindings ?? DEFAULT_BINDINGS;
+  const bindings = input.bindings;
   const pads = settings.padBindings ?? DEFAULT_PAD_BINDINGS;
   $('#bindings-body').replaceChildren(
     ...ACTIONS.map((action) => {
       const tr = document.createElement('tr');
       const label = ACTION_LABELS[action];
-      const keys = (bindings[action] ?? DEFAULT_BINDINGS[action]).map(keyName).join(', ') || 'unbound';
+      const keys = bindings[action].map(keyName).join(', ') || 'unbound';
       const remappable = PAD_ACTIONS.includes(action);
       const buttons = remappable ? (pads[action] ?? []).map(padName).join(', ') || 'unbound' : 'Stick or d-pad';
       tr.innerHTML = `<th scope="row">${label}</th>
@@ -283,7 +292,7 @@ function listenForKey(action, button) {
   input.capture = (code) => {
     button.classList.remove('listening');
     if (code !== 'Escape' || action === 'pause') {
-      const next = structuredClone({ ...DEFAULT_BINDINGS, ...(settings.bindings ?? {}) });
+      const next = structuredClone(input.bindings);
       // A key can only do one thing: remove it from any other action first
       for (const a of ACTIONS) next[a] = next[a].filter((k) => k !== code);
       next[action] = [code, ...next[action]].slice(0, 3);
@@ -421,6 +430,8 @@ function beginView(level, weather, vest) {
   hud.root.hidden = false;
   hud.split.hidden = true;
   hud.place.hidden = true;
+  hud.caption.hidden = true;
+  captionTimer = 0;
   hud.replay.hidden = true;
   hud.dashes.hidden = false;
   $('#replay-stop').hidden = true;

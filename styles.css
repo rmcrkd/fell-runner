@@ -329,7 +329,8 @@ body:not(.playing) #game {
   padding: 0.4em 0.9em;
 }
 
-.hint kbd {
+.hint kbd,
+.help.again kbd {
   font: inherit;
   font-family: ui-monospace, Menlo, monospace;
   background: var(--ink);
@@ -1011,6 +1012,25 @@ thead th {
 
 .stats .span {
   grid-column: 1 / -1;
+}
+
+/* Results: the time and medal fit on one row above the buttons, the details
+   below them are quieter */
+.stats.headline {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.stats.details {
+  margin-top: 1.2em;
+}
+
+.stats.details dd,
+.stats.details .span dd {
+  font-size: 1rem;
+}
+
+.help.again {
+  margin: 0.6em 0 0;
 }
 
 .stats .span dd {

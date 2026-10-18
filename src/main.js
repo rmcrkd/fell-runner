@@ -59,6 +59,11 @@ let mode = 'menu'; // menu | playing | paused | results | replay
 let run = null;
 const screenStack = [];
 
+// Mode stays 'results' while "Change fell or vest" is open, so check the screen too
+function resultsShown() {
+  return mode === 'results' && !$('#screen-results').hidden;
+}
+
 function showScreen(id, { push = true } = {}) {
   cancelCapture();
   const current = $$('.screen').find((s) => !s.hidden);
@@ -114,6 +119,14 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       back();
     }
+  }
+  // Handled here, before Input sees it, so the press doesn't also restart the
+  // new run. A restart remapped to Tab, or to Enter or Space on a focused
+  // control, keeps its menu meaning.
+  const menuKey = e.code === 'Tab' || (['Enter', 'NumpadEnter', 'Space'].includes(e.code) && e.target.closest?.('button, a[href], input, select, textarea'));
+  if (resultsShown() && !menuKey && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && input.actionsFor(e.code).includes('restart')) {
+    e.preventDefault();
+    startRun();
   }
 });
 
@@ -792,21 +805,29 @@ function renderResults({ improved, previous }) {
   const pb = $('#results-pb');
   pb.hidden = !improved;
   pb.textContent = previous ? 'New personal best!' : 'First ascent! Ghost saved.';
-  const rows = [
-    ['Time', formatTime(frames)],
-    ['Best', improved ? formatTime(frames) : formatTime(previous.frames)],
-    [improved && previous ? 'Improvement' : 'Gap to best', previous ? formatTime(frames - previous.frames, { sign: true }) : '–'],
-    ['Falls', String(run.deaths)],
-    ['Vest', run.vest.name],
-    ['Seed', seedToCode(run.seed)],
-    ['Weather', `${run.difficulty.name}: ${run.weather.describe()}`],
-  ];
   const medal = medalFor(level.def, frames);
   const next = nextTarget(level.def, frames);
   const aim = next && `${next.name} is ${formatTarget(next.frames)}`;
-  rows.splice(3, 0, ['Medal', medal ? `${medalBadge(medal, run.assisted)}${aim ? ` <small>${aim}</small>` : ''}` : `None yet <small>${aim}</small>`]);
-  if (run.assisted) rows.push(['Board', 'Assisted']);
-  $('#results-stats').innerHTML = rows.map(([k, v]) => `<div${k === 'Weather' ? ' class="span"' : ''}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const tiles = (rows) => rows.map(([k, v]) => `<div${k === 'Weather' ? ' class="span"' : ''}><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  // The time and medal go above the buttons, the details below them
+  $('#results-stats').innerHTML = tiles([
+    ['Time', formatTime(frames)],
+    ['Best', improved ? formatTime(frames) : formatTime(previous.frames)],
+    [improved && previous ? 'Improvement' : 'Gap to best', previous ? formatTime(frames - previous.frames, { sign: true }) : '–'],
+    ['Medal', medal ? `${medalBadge(medal, run.assisted)}${aim ? ` <small>${aim}</small>` : ''}` : `None yet <small>${aim}</small>`],
+  ]);
+  const details = [
+    ['Falls', String(run.deaths)],
+    ['Vest', run.vest.name],
+    ['Seed', seedToCode(run.seed)],
+  ];
+  if (run.assisted) details.push(['Board', 'Assisted']);
+  details.push(['Weather', `${run.difficulty.name}: ${run.weather.describe()}`]);
+  $('#results-details').innerHTML = tiles(details);
+
+  const again = againControl();
+  $('#results-again').hidden = !again;
+  if (again) $('#results-again').innerHTML = `Or press <kbd>${again}</kbd> to run it again.`;
 
   const table = $('#results-splits');
   const bestSplits = previous?.splits ?? [];
@@ -829,7 +850,18 @@ function renderResults({ improved, previous }) {
   else if (!improved) msg += ` ${speakTime(frames - previous.frames)} behind your best.`;
   msg += medal ? ` ${medal.name} time${run.assisted ? ', assisted' : ''}.` : '';
   if (next) msg += ` ${next.name} is ${speakTarget(next.frames)}.`;
+  // Screen readers may keep single-letter keys for themselves, so lead with the button
+  msg += ` Tab to Run it again${again ? `, or press ${again}` : ''}.`;
   announce(msg);
+}
+
+// Speedrunning is quick retries: the restart control that restarts a run also
+// runs it again from the results screen. Named for the device in use; touch
+// has no restart control, only the button.
+function againControl() {
+  if (input.lastDevice === 'touch') return null;
+  const name = controlName('restart');
+  return name === 'unbound' ? null : name;
 }
 
 function challengeLink() {
@@ -1036,6 +1068,8 @@ input.onMenuPad = (action) => {
     back();
   } else if (action === 'pause' && mode === 'paused') {
     resume();
+  } else if (action === 'restart' && resultsShown()) {
+    startRun();
   }
 };
 

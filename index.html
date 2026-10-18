@@ -148,7 +148,17 @@
       <section id="screen-results" class="screen panel" aria-labelledby="results-h" hidden>
         <h2 id="results-h" tabindex="-1">Summit!</h2>
         <p id="results-pb" class="pb" hidden>New personal best!</p>
-        <dl id="results-stats" class="stats"></dl>
+        <!-- The time and what to do next come first, so they fit without scrolling -->
+        <dl id="results-stats" class="stats headline"></dl>
+        <nav class="menu horizontal" aria-label="After the run">
+          <button type="button" class="primary" id="results-retry">Run it again</button>
+          <button type="button" id="results-new">New weather</button>
+          <button type="button" id="results-replay">Watch this run</button>
+          <button type="button" data-go="setup">Change fell or vest</button>
+          <button type="button" data-go="title">Main menu</button>
+        </nav>
+        <p id="results-again" class="help again" hidden></p>
+        <dl id="results-details" class="stats details"></dl>
         <table id="results-splits" class="splits" hidden>
           <caption>Splits</caption>
           <thead>
@@ -161,13 +171,6 @@
           <button type="button" id="results-copy">Copy challenge link</button>
           <span id="results-copied" class="help" role="status"></span>
         </div>
-        <nav class="menu horizontal" aria-label="After the run">
-          <button type="button" class="primary" id="results-retry">Run it again</button>
-          <button type="button" id="results-new">New weather</button>
-          <button type="button" id="results-replay">Watch this run</button>
-          <button type="button" data-go="setup">Change fell or vest</button>
-          <button type="button" data-go="title">Main menu</button>
-        </nav>
         <div class="donate-box">
           <p>On the real fells, rescue comes from unpaid volunteers. Celebrate your summit by supporting them.</p>
           <a class="button-link donate" href="https://penrithmrt.org.uk/donate" target="_blank" rel="noopener">♥ Donate to Penrith Mountain Rescue Team<span class="sr-only"> (opens in a new tab)</span></a>
@@ -326,6 +329,7 @@
         <ul>
           <li>Every run's weather comes from its <strong>seed</strong>. The same seed gives the same gusts at the same moments, so share one with friends for a fair race.</li>
           <li>Each fell has <strong>target times</strong>: gold for a skilled runner's pace, then silver and bronze. They're the same in every weather, so a storm makes them harder.</li>
+          <li>After a summit, the restart key or button (R, or Back on a gamepad) <strong>runs it again</strong>, just as it restarts a run.</li>
           <li>Your fastest run on each fell and weather setting is saved with a <strong>ghost</strong> to race. Splits at each cairn show whether you're ahead, and the route map at the bottom of the screen shows you (●) and your ghost (○).</li>
           <li><strong>Watch best run</strong> replays your ghost in the weather it ran in. You can also watch any run again from the results screen.</li>
           <li><strong>Super jump:</strong> jump during a sideways dash on the ground. <strong>Hyper:</strong> dash down-diagonally into the ground, then jump. <strong>Wall bounce:</strong> dash upwards beside a crag, then jump.</li>

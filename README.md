@@ -121,6 +121,7 @@ Every screen (menus, play, pause, results, replay and touch controls) passes an 
   | Scafell Pike | 1:01 | 1:30 | 2:15 |
 
 - Your best run on each fell and weather setting saves a **ghost** to race and **splits** for every cairn.
+- **Run it again** straight from the results screen with the restart key or button (R, or Back on a gamepad), as you would mid-run.
 - **Watch best run** replays your ghost in the weather it ran in, and **Watch this run** replays any run from the results screen.
 - **Ghost's weather** loads the seed your best ghost ran in, for a true like-for-like attempt.
 - After a run, **Copy challenge link** shares the fell, vest and seed, for example `?fell=scafell&weather=extreme&seed=0K3P9QX&vest=mountain`.

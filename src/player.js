@@ -1,4 +1,5 @@
 import { PHYS as P } from './config.js';
+import { LOOSE_CRUMBLE, LOOSE_RESPAWN } from './level.js';
 
 // A Celeste-style platformer controller: integer positions with sub-pixel
 // remainders, coyote time, jump buffering, variable jump height, wall
@@ -24,6 +25,11 @@ export class Player {
     this.maxStamina = P.climbMaxStamina * this.vest.staminaMult;
     this.maxDashes = assist.dashMode === 'two' ? Math.max(2, this.vest.dashes) : this.vest.dashes;
     this.events = [];
+    // Loose rock state, one entry per block: 0 intact, > 0 crumbling (seconds
+    // left), < 0 fallen (seconds until it settles back). It lives here rather
+    // than in the level so that snapshots, ghosts and the solver stay exact.
+    this.loose = new Float32Array(level.loose.length);
+    this.touching = [];
     this.spawn(level.start.x, level.start.y);
   }
 
@@ -61,17 +67,21 @@ export class Player {
     this.noWindTimer = 0;
     this.runDistance = 0;
     this.squash = 1;
+    this.exposure = 1;
+    this.loose.fill(0);
   }
 
   // Plain copy of the movement state, used by tools to branch simulations.
   snapshot() {
-    const { level, vest, assist, events, ...state } = this;
-    return { ...state, dashDir: { ...this.dashDir } };
+    const { level, vest, assist, events, touching, loose, ...state } = this;
+    return { ...state, dashDir: { ...this.dashDir }, loose: Float32Array.from(loose) };
   }
 
   restore(state) {
-    Object.assign(this, state);
+    const { loose, ...rest } = state;
+    Object.assign(this, rest);
     this.dashDir = { ...state.dashDir };
+    this.loose.set(loose);
   }
 
   get tired() {
@@ -83,7 +93,7 @@ export class Player {
   }
 
   collide(dx, dy) {
-    return this.level.solidAt(this.x + dx, this.y + dy, this.w, this.h);
+    return this.level.solidAt(this.x + dx, this.y + dy, this.w, this.h, this.loose);
   }
 
   checkGround() {
@@ -128,8 +138,9 @@ export class Player {
     this.moveH(this.vx * dt, true);
     this.moveV(this.vy * dt);
 
+    this.exposure = wind === 0 ? 1 : this.level.exposureAt(this.x, this.y, this.w, this.h, Math.sign(wind));
     if (wind !== 0 && this.state === ST.NORMAL && this.noWindTimer <= 0) {
-      const drift = wind * this.vest.windMult * (this.checkGround() ? P.windGroundMult : 1);
+      const drift = wind * this.exposure * this.vest.windMult * (this.checkGround() ? P.windGroundMult : 1);
       this.moveH(drift * dt, false);
     }
 
@@ -141,6 +152,7 @@ export class Player {
     if (nowGround) this.runDistance += Math.abs(this.x - startX);
     this.onGround = nowGround;
 
+    if (this.loose.length) this.updateLoose(dt);
     this.checkHazards();
   }
 
@@ -297,7 +309,7 @@ export class Player {
   // meaning they have reached the lip of the crag.
   slipCheck() {
     const px = this.facing === 1 ? this.x + this.w : this.x - 1;
-    return !this.level.solidAt(px, this.y + 4, 1, 1) && !this.level.solidAt(px, this.y, 1, 1);
+    return !this.level.solidAt(px, this.y + 4, 1, 1, this.loose) && !this.level.solidAt(px, this.y, 1, 1, this.loose);
   }
 
   enterClimb() {
@@ -504,6 +516,37 @@ export class Player {
       if (s > 0 && this.state === ST.DASH && this.dashDir.y > 0) this.dashOnGround = true;
       this.vy = 0;
       return;
+    }
+  }
+
+  // Loose rock starts to go when you stand on it or cling to it, falls
+  // away a moment later, and settles back once you're clear of it.
+  updateLoose(dt) {
+    const { level, loose } = this;
+    for (let i = 0; i < loose.length; i++) {
+      const v = loose[i];
+      if (v > 0) {
+        loose[i] = v - dt;
+        if (loose[i] <= 0) {
+          loose[i] = -LOOSE_RESPAWN;
+          this.events.push('crumble');
+        }
+      } else if (v < 0) {
+        loose[i] = Math.min(0, v + dt);
+        if (loose[i] === 0) {
+          // Don't let rock settle back on top of the runner
+          const b = level.loose[i];
+          if (this.x < b.tx * 8 + 8 && this.x + this.w > b.tx * 8 && this.y < b.ty * 8 + 8 && this.y + this.h > b.ty * 8) loose[i] = -dt;
+        }
+      }
+    }
+    const t = this.touching;
+    if (this.onGround) {
+      for (const i of level.looseIn(this.x, this.y + this.h, this.w, 1, t)) if (loose[i] === 0) loose[i] = LOOSE_CRUMBLE;
+    }
+    if (this.state === ST.CLIMB) {
+      const fx = this.facing > 0 ? this.x + this.w : this.x - 1;
+      for (const i of level.looseIn(fx, this.y, 1, this.h, t)) if (loose[i] === 0) loose[i] = LOOSE_CRUMBLE;
     }
   }
 

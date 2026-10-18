@@ -1,10 +1,13 @@
+import { TILE } from '../config.js';
 import { Level } from '../level.js';
 import blencathra from './blencathra.js';
 import helvellyn from './helvellyn.js';
 import scafell from './scafell.js';
+import { hashString } from '../rng.js';
+import { stitch } from './stitch.js';
 
-// The three fells, in order of difficulty. Maps live in their own files;
-// see CONTRIBUTING.md for the tile key.
+// The three fells, in order of difficulty. Each map is a list of sections
+// named after the real places along the route; see CONTRIBUTING.md.
 export const LEVEL_DEFS = [
   {
     id: 'blencathra',
@@ -12,9 +15,9 @@ export const LEVEL_DEFS = [
     route: 'via Sharp Edge',
     heightM: 868,
     grade: 1,
-    blurb: 'Skirt Scales Tarn and climb Scales Fell, then pick across the rock teeth of Sharp Edge, one of the most notorious ridges in the Lakes. Climb the Bad Step and Foule Crag to Hallsfell Top.',
-    cairns: ['Scales Tarn', 'Scales Fell', 'Sharp Edge', 'The Bad Step', 'Below Foule Crag', 'Top of Foule Crag', 'Summit ridge'],
-    map: blencathra,
+    summit: 'ring',
+    blurb: 'From Scales, contour round Scales Fell and climb beside Scales Beck to Scales Tarn. Then cross Sharp Edge, one of the most notorious ridges in the Lakes, and its polished Bad Step, before scrambling up Foule Crag to Atkinson Pike and Hallsfell Top.',
+    sections: blencathra,
   },
   {
     id: 'helvellyn',
@@ -22,9 +25,9 @@ export const LEVEL_DEFS = [
     route: 'via Striding Edge',
     heightM: 950,
     grade: 2,
-    blurb: 'From the Hole-in-the-Wall over Birkhouse Moor and out along the pinnacles of Striding Edge, high above Red Tarn. Down the chimney, up the final headwall, across the summit plateau.',
-    cairns: ['Birkhouse Moor', 'High Spying How', 'Striding Edge', 'The chimney', 'Top of the headwall', 'Wind shelter', 'Summit plateau'],
-    map: helvellyn,
+    summit: 'pillar',
+    blurb: 'From Glenridding over Birkhouse Moor to the Hole-in-the-Wall, then out along High Spying How and the crest of Striding Edge, high above Red Tarn. Down-climb the chimney at the end, pass the Gough Memorial on the steep final pull, and cross the summit plateau to the shelter and trig point.',
+    sections: helvellyn,
   },
   {
     id: 'scafell',
@@ -32,12 +35,28 @@ export const LEVEL_DEFS = [
     route: 'from Wasdale Head',
     heightM: 978,
     grade: 3,
-    blurb: "England's highest. Ford Lingmell Gill, haul up Brown Tongue, cross Hollow Stones and Mickledore, then dance over the endless summit boulder field.",
-    cairns: ['Brown Tongue', 'Hollow Stones', 'Mickledore', 'Boulder field', 'Below the summit step', 'Summit approach'],
-    map: scafell,
+    summit: 'cairn-pillar',
+    // The boulder fields have gaps you can only cross with a dash
+    needsDash: true,
+    blurb: "England's highest mountain. From Wasdale Head, ford Lingmell Gill, haul up the stone staircase of Brown Tongue into the boulder-strewn corrie of Hollow Stones, climb the loose scree to Mickledore, then pick across the summit boulder field to the trig point on its great cairn.",
+    sections: scafell,
   },
 ];
 
-export const LEVELS = LEVEL_DEFS.map((def) => new Level(def));
+function build(def) {
+  const { map, places } = stitch(def.sections);
+  const level = new Level({ ...def, map, places });
+  // Best times and ghosts are stored under this key, so editing a map
+  // retires the records set on the old one instead of comparing unlike runs.
+  level.key = `${def.id}.${hashString(map).toString(36)}`;
+  // Cairns, and the places along the route, take their names from the
+  // section they're in.
+  level.places = places.map((p) => ({ ...p, x: p.col * TILE }));
+  const placeAt = (x) => [...level.places].reverse().find((p) => p.x <= x);
+  level.cairns.forEach((c, i) => (c.name = placeAt(c.x)?.name ?? `Cairn ${i + 1}`));
+  return level;
+}
+
+export const LEVELS = LEVEL_DEFS.map(build);
 
 export const levelById = (id) => LEVELS.find((l) => l.id === id) ?? LEVELS[0];

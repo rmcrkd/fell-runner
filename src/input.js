@@ -2,7 +2,7 @@
 // step. "Pressed" flags latch between steps so a quick tap is never lost,
 // even if the display runs slower than the simulation.
 
-export const ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'dash', 'grab', 'pause', 'restart'];
+export const ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'dash', 'grab', 'pause', 'restart', 'status'];
 
 export const ACTION_LABELS = {
   left: 'Move left',
@@ -14,6 +14,7 @@ export const ACTION_LABELS = {
   grab: 'Grab / climb',
   pause: 'Pause',
   restart: 'Restart run',
+  status: 'Read out status',
 };
 
 export const DEFAULT_BINDINGS = {
@@ -26,10 +27,17 @@ export const DEFAULT_BINDINGS = {
   grab: ['KeyZ', 'KeyL', 'ShiftLeft'],
   pause: ['Escape', 'KeyP'],
   restart: ['KeyR'],
+  status: ['KeyI'],
 };
 
-// Standard gamepad layout: A jump, X or B dash, any bumper or trigger grabs.
-const PAD = { jump: [0], dash: [2, 1], grab: [4, 5, 6, 7], pause: [9], restart: [8] };
+// Gamepad buttons, in the browser's standard layout. Movement stays on the
+// left stick and d-pad; everything else can be remapped.
+export const PAD_ACTIONS = ['jump', 'dash', 'grab', 'pause', 'restart', 'status'];
+export const DEFAULT_PAD_BINDINGS = { jump: [0], dash: [2, 1], grab: [4, 5, 6, 7], pause: [9], restart: [8], status: [3] };
+const PAD_MOVE = [12, 13, 14, 15];
+const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'Left stick', 'Right stick', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home'];
+
+export const padName = (i) => PAD_NAMES[i] ?? `Button ${i + 1}`;
 
 export function keyName(code) {
   if (!code) return 'unbound';
@@ -55,14 +63,28 @@ export class Input {
     this.lastDevice = 'keyboard';
     this.onAction = null;
     this.capture = null;
+    this.padCapture = null;
+    this.prevButtons = [];
 
     addEventListener('keydown', (e) => this.keydown(e));
     addEventListener('keyup', (e) => this.down.delete(e.code));
     addEventListener('blur', () => this.down.clear());
   }
 
+  // Saved maps from before an action existed lack it: fill those in with
+  // default keys that aren't already doing something else.
   get bindings() {
-    return this.settings.bindings ?? DEFAULT_BINDINGS;
+    const saved = this.settings.bindings;
+    if (!saved) return DEFAULT_BINDINGS;
+    if (ACTIONS.every((a) => saved[a])) return saved;
+    const used = new Set(Object.values(saved).flat());
+    const full = { ...saved };
+    for (const a of ACTIONS) full[a] ??= DEFAULT_BINDINGS[a].filter((k) => !used.has(k));
+    return full;
+  }
+
+  get padBindings() {
+    return this.settings.padBindings ?? DEFAULT_PAD_BINDINGS;
   }
 
   actionsFor(code) {
@@ -70,6 +92,13 @@ export class Input {
   }
 
   keydown(e) {
+    if (this.padCapture && e.code === 'Escape') {
+      e.preventDefault();
+      const cb = this.padCapture;
+      this.padCapture = null;
+      cb(null);
+      return;
+    }
     if (this.capture) {
       e.preventDefault();
       const cb = this.capture;
@@ -90,7 +119,7 @@ export class Input {
   press(action) {
     this.latched.add(action);
     if (action === 'grab' && this.settings.grabMode === 'toggle') this.grabToggled = !this.grabToggled;
-    if ((action === 'pause' || action === 'restart') && this.onAction) this.onAction(action);
+    if ((action === 'pause' || action === 'restart' || action === 'status') && this.onAction) this.onAction(action);
   }
 
   held(action) {
@@ -105,6 +134,20 @@ export class Input {
     for (const pad of pads) {
       if (!pad) continue;
       const b = (i) => pad.buttons[i]?.pressed;
+      if (this.padCapture) {
+        // Remapping: the first button to go down (not movement) is the answer
+        const i = pad.buttons.findIndex((btn, k) => btn.pressed && !this.prevButtons[k] && !PAD_MOVE.includes(k));
+        this.prevButtons = pad.buttons.map((btn) => btn.pressed);
+        if (i >= 0) {
+          const cb = this.padCapture;
+          this.padCapture = null;
+          // Swallow this press so it doesn't also act in the menu
+          this.prevPad = { ...this.prevPad, jump: true, dash: true, pause: true };
+          cb(i);
+        }
+        return;
+      }
+      this.prevButtons = pad.buttons.map((btn) => btn.pressed);
       const ax = pad.axes[0] ?? 0;
       const ay = pad.axes[1] ?? 0;
       const held = {
@@ -113,7 +156,7 @@ export class Input {
         up: b(12) || ay < -0.5,
         down: b(13) || ay > 0.5,
       };
-      for (const [action, buttons] of Object.entries(PAD)) held[action] = buttons.some(b);
+      for (const action of PAD_ACTIONS) held[action] = (this.padBindings[action] ?? []).some(b);
       for (const [action, value] of Object.entries(held)) {
         if (!value) continue;
         this.padHeld[action] = true;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PHYS, STEP, VESTS, byId } from '../src/config.js';
+import { EXPOSURE_VALLEY, LOOSE_CRUMBLE, LOOSE_RESPAWN } from '../src/level.js';
 import { Player, ST } from '../src/player.js';
 import { inp, testLevel } from './helpers.js';
 
@@ -183,4 +184,61 @@ test('falling off the bottom of the map is fatal', () => {
   p.y = 10 * 8;
   for (let f = 0; f < 200 && p.state !== ST.DEAD; f++) p.update(inp(), STEP);
   assert.equal(p.deathCause, 'fall');
+});
+
+test('loose rock holds you for a moment, gives way, then settles back', () => {
+  const map = `
+..........
+..........
+..........
+P.........F
+###%%%####
+###...####
+`;
+  const lvl = testLevel(map);
+  const p = new Player(lvl, { vest: ridgeline });
+  p.x = 3 * 8 + 4;
+  p.y = 4 * 8 - p.h;
+  const frames = (s) => Math.round(s * 60);
+  for (let f = 0; f < frames(LOOSE_CRUMBLE) - 2; f++) p.update(inp(), STEP);
+  assert.ok(p.onGround, 'still standing just before it goes');
+  for (let f = 0; f < 6; f++) p.update(inp(), STEP);
+  assert.ok(!p.onGround, 'fell through once it crumbled');
+  // Out of the way, the rock settles back after a couple of seconds
+  p.x = 8;
+  p.y = 4 * 8 - p.h;
+  for (let f = 0; f < frames(LOOSE_RESPAWN) + 2; f++) p.update(inp(), STEP);
+  assert.ok(lvl.solidAt(3 * 8, 4 * 8, 8, 8, p.loose), 'solid again');
+});
+
+test('player snapshots copy loose rock state, so branches never share it', () => {
+  const lvl = testLevel(`
+....
+P..F
+#%%#
+`);
+  const p = new Player(lvl, { vest: ridgeline });
+  const snap = p.snapshot();
+  p.loose[0] = -1;
+  p.restore(snap);
+  assert.equal(p.loose[0], 0);
+});
+
+test('wind is gentler in the valley than on the tops, and rock upwind gives shelter', () => {
+  const lvl = testLevel(`
+...................F
+...................#
+...................#
+...................#
+P..................#
+####################
+`);
+  // Feet on the valley floor (the start) and level with the summit
+  const valley = lvl.exposureAt(4 * 8, lvl.start.y - 11, 8, 11, 1);
+  const top = lvl.exposureAt(19 * 8, lvl.finish.y - 11, 8, 11, 1);
+  assert.equal(valley, EXPOSURE_VALLEY);
+  assert.equal(top, 1);
+  // Just downwind of the crag (wind blowing west, crag to the east)
+  const lee = lvl.exposureAt(18 * 8, lvl.start.y - 11, 8, 11, -1);
+  assert.ok(lee < valley * 0.5, `lee ${lee}`);
 });

@@ -134,6 +134,146 @@ test('mountain marathon vest carries two dashes', () => {
   assert.equal(p.maxDashes, 2);
 });
 
+test('holding down crouches: half height, feet planted, sliding to a stop', () => {
+  const p = make();
+  const feet = p.y + p.h;
+  for (let f = 0; f < 10; f++) p.update(inp({ moveX: 1 }), STEP);
+  for (let f = 0; f < 30; f++) p.update(inp({ moveX: 1, moveY: 1 }), STEP);
+  assert.ok(p.ducking);
+  assert.equal(p.h, PHYS.duckHeight);
+  assert.equal(p.y + p.h, feet);
+  assert.equal(p.vx, 0, 'no running while crouched');
+  p.update(inp(), STEP);
+  assert.ok(!p.ducking, 'stands when you let go');
+  assert.equal(p.y + p.h, feet);
+});
+
+test('a crouched runner stays down under a low roof, and cannot grab', () => {
+  const lvl = testLevel(`
+..........
+..........
+.....#####
+P........F
+##########
+`);
+  const p = new Player(lvl, { vest: ridgeline });
+  p.x = 3 * 8;
+  p.update(inp({ moveY: 1 }), STEP);
+  p.x = 6 * 8;
+  for (let f = 0; f < 10; f++) p.update(inp({ moveX: 1, grab: true }), STEP);
+  assert.ok(p.ducking, 'no headroom to stand');
+  assert.notEqual(p.state, ST.CLIMB);
+  assert.ok(!lvl.solidAt(p.x, p.y, p.w, p.h), 'fits under the roof');
+});
+
+test('stuck crouching just under the edge of a roof, you edge out from under it', () => {
+  const lvl = testLevel(`
+..........
+..........
+.....#####
+P........F
+##########
+`);
+  const p = new Player(lvl, { vest: ridgeline });
+  p.update(inp({ moveY: 1 }), STEP);
+  // Overlapping the roof by 3px: within reach of headroom
+  p.x = 5 * 8 - 5;
+  for (let f = 0; f < 30 && p.ducking; f++) p.update(inp(), STEP);
+  assert.ok(!p.ducking);
+  assert.ok(p.x <= 5 * 8 - 8, `stood up at x ${p.x}`);
+});
+
+test('a crouched super is a hyper; a down-diagonal dash that lands is an ultra', () => {
+  // Crouch, then dash sideways and jump: long and low
+  const super_ = make();
+  super_.update(inp({ moveX: 1, dashPressed: true }), STEP);
+  super_.update(inp({ moveX: 1, jump: true, jumpPressed: true }), STEP);
+  const hyper = make();
+  hyper.update(inp({ moveY: 1 }), STEP);
+  hyper.update(inp({ moveX: 1, dashPressed: true }), STEP);
+  assert.ok(hyper.ducking, 'a sideways dash from a crouch stays low');
+  hyper.update(inp({ moveX: 1, jump: true, jumpPressed: true }), STEP);
+  assert.ok(!hyper.ducking);
+  assert.ok(hyper.vx > super_.vx && hyper.vy > super_.vy, `hyper ${hyper.vx},${hyper.vy} vs super ${super_.vx},${super_.vy}`);
+
+  // From the air, a down-diagonal dash crouches you and gains speed as it lands
+  const ultra = make();
+  ultra.x = 40;
+  ultra.y -= 12;
+  ultra.update(inp({ moveX: 1, moveY: 1, dashPressed: true }), STEP);
+  const before = ultra.vx;
+  for (let f = 0; f < 8 && !ultra.dashOnGround; f++) ultra.update(inp({ moveX: 1, moveY: 1 }), STEP);
+  assert.ok(ultra.ducking);
+  assert.ok(Math.abs(ultra.vx - before * PHYS.groundDashSpeedMult) < 1e-9, `${before} became ${ultra.vx}`);
+
+  // Landing just after the dash has ended still counts, once
+  const late = make();
+  late.x = 40;
+  late.y -= 40;
+  late.update(inp({ moveX: 1, moveY: 1, dashPressed: true }), STEP);
+  let landing = null;
+  for (let f = 0; f < 30 && !late.ducking; f++) {
+    landing = late.vx;
+    late.update(inp({ moveX: 1, moveY: 1 }), STEP);
+  }
+  assert.equal(late.state, ST.NORMAL, 'the dash ended before landing');
+  assert.ok(late.ducking && late.vx > landing, `${landing} became ${late.vx}`);
+  const after = late.vx;
+  late.update(inp({ moveX: 1, moveY: 1 }), STEP);
+  assert.ok(late.vx < after, 'only once');
+});
+
+test('a crouch-jump stands up on the way down, in time to grab a crag', () => {
+  const p = make();
+  p.x = 27 * 8 - 8 - 24;
+  p.update(inp({ moveY: 1 }), STEP);
+  let grabbed = -1;
+  for (let f = 0; f < 60 && grabbed < 0; f++) {
+    p.update(inp({ moveX: 1, jump: true, jumpPressed: f === 0, grab: true }), STEP);
+    if (f > 0 && p.vy > 0) assert.ok(!p.ducking || p.onGround, 'stands once falling');
+    if (p.state === ST.CLIMB) grabbed = f;
+  }
+  assert.ok(grabbed > 0 && !p.onGround, `grabbed in the air (frame ${grabbed})`);
+});
+
+test('crouching behind a single rock gets you right into its lee', () => {
+  const lvl = testLevel(`
+...................F
+...................#
+...................#
+...................#
+P..........#.......#
+####################
+`);
+  // A westerly, with the rock just to the west
+  const feet = lvl.start.y;
+  const standing = lvl.exposureAt(12 * 8, feet - 11, 8, 11, 1);
+  const crouched = lvl.exposureAt(12 * 8, feet - PHYS.duckHeight, 8, PHYS.duckHeight, 1);
+  assert.ok(crouched < standing * 0.6, `crouched ${crouched} vs standing ${standing}`);
+});
+
+test('loose rock never settles back over a crouching runner', () => {
+  const lvl = testLevel(`
+..........
+..........
+..........
+P.........F
+###%%%####
+###...####
+##########
+`);
+  const p = new Player(lvl, { vest: ridgeline });
+  // Crouched in the pit the rock fell into
+  p.loose.fill(-STEP);
+  p.x = 3 * 8 + 4;
+  p.y = 6 * 8 - p.h;
+  p.update(inp({ moveY: 1 }), STEP);
+  for (let f = 0; f < 60 * (LOOSE_RESPAWN + 1); f++) p.update(inp({ moveY: 1 }), STEP);
+  assert.ok(p.ducking);
+  p.update(inp(), STEP);
+  assert.ok(!p.ducking, 'room to stand up');
+});
+
 test('wind pushes the runner, more in the air, less with a heavier vest', () => {
   const drift = (vest, air) => {
     const p = new Player(level, { vest: byId(VESTS, vest) });

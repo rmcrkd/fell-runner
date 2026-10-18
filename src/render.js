@@ -333,7 +333,7 @@ export class Renderer {
     const cy = player.y + player.h;
     // Grit scraped off the crag while wall sliding
     if (player.state === ST.NORMAL && player.wallSlideDir && player.vy > 30 && Math.random() < 0.3) {
-      this.dust(player.wallSlideDir > 0 ? player.x + player.w : player.x, player.y + 4 + Math.random() * 6, 1);
+      this.dust(player.wallSlideDir > 0 ? player.x + player.w : player.x, player.y + player.h - 7 + Math.random() * 6, 1);
     }
     for (const e of events) {
       if (e.type === 'land' || e.type === 'jump' || e.type === 'walljump') this.dust(cx, cy, e.type === 'land' ? 5 : 3);
@@ -342,7 +342,7 @@ export class Renderer {
         this.addShake(3);
         for (let i = 0; i < 10; i++) {
           const a = (i / 10) * Math.PI * 2;
-          this.fx.push({ kind: 'orb', x: cx, y: player.y + 5, vx: Math.cos(a) * 70, vy: Math.sin(a) * 70, life: 0.5, max: 0.5, colour: DASH_COLOURS[1] });
+          this.fx.push({ kind: 'orb', x: cx, y: player.y + player.h - 6, vx: Math.cos(a) * 70, vy: Math.sin(a) * 70, life: 0.5, max: 0.5, colour: DASH_COLOURS[1] });
         }
       }
       if (e.type === 'checkpoint') {
@@ -408,7 +408,7 @@ export class Renderer {
       ctx.globalAlpha = run.replay ? 1 : 0.45;
       this.drawRunner(ctx, ghost.x - camX, ghost.y - camY, {
         facing: ghost.facing,
-        state: ghost.climb ? 'climb' : ghost.dash ? 'dash' : ghost.air ? 'air' : 'run',
+        state: ghost.duck ? 'duck' : ghost.climb ? 'climb' : ghost.dash ? 'dash' : ghost.air ? 'air' : 'run',
         phase: ghost.runDistance,
         moving: true,
         ghost: !run.replay,
@@ -422,10 +422,10 @@ export class Renderer {
     // Player
     if (run?.player) {
       const p = run.player;
-      if (p.state === ST.DASH && !s.reduceMotion) this.trails.push({ x: p.x, y: p.y, facing: p.facing, life: 0.25 });
+      if (p.state === ST.DASH && !s.reduceMotion) this.trails.push({ x: p.x, y: p.y, facing: p.facing, duck: p.ducking, life: 0.25 });
       for (const t of this.trails) {
         ctx.globalAlpha = Math.max(0, t.life / 0.25) * 0.5;
-        this.drawRunner(ctx, t.x - camX, t.y - camY, { facing: t.facing, state: 'dash', silhouette: DASH_COLOURS[0] });
+        this.drawRunner(ctx, t.x - camX, t.y - camY, { facing: t.facing, state: t.duck ? 'duck' : 'dash', silhouette: DASH_COLOURS[0] });
         t.life -= dt;
       }
       ctx.globalAlpha = 1;
@@ -433,7 +433,7 @@ export class Renderer {
       if (p.state !== ST.DEAD) {
         this.drawRunner(ctx, p.x - camX, p.y - camY, {
           facing: p.facing,
-          state: p.state === ST.CLIMB ? 'climb' : p.state === ST.DASH ? 'dash' : !p.onGround ? 'air' : 'run',
+          state: p.ducking ? 'duck' : p.state === ST.CLIMB ? 'climb' : p.state === ST.DASH ? 'dash' : !p.onGround ? 'air' : 'run',
           phase: p.runDistance,
           moving: Math.abs(p.vx) > 5,
           squash: p.squash,
@@ -767,8 +767,9 @@ export class Renderer {
       ctx.fillRect(rx, y + cy, w, h);
     };
 
+    const duck = o.state === 'duck';
     if (o.silhouette) {
-      px(1, 0, 6, 11, o.silhouette);
+      px(1, 0, 6, duck ? 6 : 11, o.silhouette);
       return;
     }
     const ghost = o.ghost;
@@ -780,14 +781,14 @@ export class Renderer {
     const hair = ghost ? '#ffffff' : o.hair ?? DASH_COLOURS[1];
 
     let stretch = 0;
-    if (o.squash > 1.12) stretch = 1;
-    else if (o.squash < 0.88) stretch = -1;
+    if (!duck && o.squash > 1.12) stretch = 1;
+    else if (!duck && o.squash < 0.88) stretch = -1;
     y -= stretch;
 
     if (pal.outline && !ghost) {
       ctx.fillStyle = pal.outline;
       const rx = x - 1;
-      ctx.fillRect(rx + 1, y - 1, 8, 13 + stretch);
+      ctx.fillRect(rx + 1, y - 1, 8, (duck ? 8 : 13) + stretch);
     }
 
     // Buff tails stream behind, blown by speed and wind
@@ -798,11 +799,22 @@ export class Renderer {
     ctx.fillStyle = hair;
     for (let i = 0; i < tailLen; i++) {
       const tx = f === 1 ? (tailDir < 0 ? x + 1 - i - 1 : x + 7 + i) : tailDir < 0 ? x + 7 + i : x - i;
-      ctx.fillRect(tx, y + 1 + (i > 1 ? wave : 0), 1, 1);
+      ctx.fillRect(tx, y + (duck ? 0 : 1) + (i > 1 ? wave : 0), 1, 1);
     }
 
     const state = o.state;
-    if (state === 'climb') {
+    if (duck) {
+      // Crouched low, head down, hands on knees
+      px(3, 0, 5, 1, hair);
+      px(3, 1, 5, 2, skin);
+      px(7, 1, 1, 1, '#1d1d1d');
+      px(1, 2, 5, 2, vest);
+      px(1, 2, 1, 1, trim);
+      px(6, 3, 1, 1, skin);
+      px(1, 4, 6, 1, dark);
+      px(1, 5, 2, 1, shoes);
+      px(5, 5, 2, 1, shoes);
+    } else if (state === 'climb') {
       px(2, 0, 5, 2, hair);
       px(2, 2, 5, 3, skin);
       px(6, 3, 1, 1, '#1d1d1d');

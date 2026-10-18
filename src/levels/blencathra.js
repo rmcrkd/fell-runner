@@ -38,7 +38,7 @@ export default [
   // The lane out of Scales, and the intake wall onto open fellside
   {
     name: null,
-    signs: ['Walls and crags break the wind. In their lee the wind gauge says Sheltered.'],
+    signs: ['Walls and crags break the wind: in their lee the gauge says Sheltered. Hold {down} to crouch behind low rocks.'],
     map: `
 ....................................................=.......
 ....................................................=...h...

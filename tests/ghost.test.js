@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { PHYS } from '../src/config.js';
 import { GhostPlayback, GhostRecorder } from '../src/ghost.js';
 import { ST } from '../src/player.js';
 
@@ -20,6 +21,15 @@ test('ghost recordings round-trip through base64', () => {
     assert.equal(g.air, i % 2 !== 0);
   }
   assert.equal(play.at(frames), null);
+});
+
+test('ghosts remember crouching, and how tall the runner was', () => {
+  const rec = new GhostRecorder();
+  rec.push({ x: 0, y: 0, facing: 1, state: ST.NORMAL, onGround: true, ducking: false });
+  rec.push({ x: 0, y: 5, facing: 1, state: ST.NORMAL, onGround: true, ducking: true });
+  const play = new GhostPlayback(rec.encode());
+  assert.deepEqual([play.at(0).duck, play.at(0).h], [false, 11]);
+  assert.deepEqual([play.at(1).duck, play.at(1).h], [true, PHYS.duckHeight]);
 });
 
 test('the same inputs in the same seeded weather always record the same ghost', async () => {

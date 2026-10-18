@@ -50,7 +50,7 @@ Every character is one 8×8 tile:
 
 Section names appear on screen (and are announced) as the runner reaches them, and each cairn takes the name of the section it stands in. A section with `name: null` continues the place before it.
 
-A section can also carry `signs: ['…']`, one tip per `?` in its map, read left to right (one signpost per column). The tip shows, and is read out, as the runner passes. Write `{jump}`, `{dash}`, `{grab}` or `{up}` for a control, and the game fills in the player's own key, gamepad button or touch button. Keep tips to a sentence or two. Blencathra's opening at Scales uses them to teach every move before the first hazard.
+A section can also carry `signs: ['…']`, one tip per `?` in its map, read left to right (one signpost per column). The tip shows, and is read out, as the runner passes. Write `{jump}`, `{dash}`, `{grab}`, `{up}` or `{down}` for a control, and the game fills in the player's own key, gamepad button or touch button. Keep tips to a sentence or two. Blencathra's opening at Scales uses them to teach every move before the first hazard.
 
 A new fell also needs an entry in `LEVEL_DEFS` in `src/levels/index.js`, with its route description, height, grade, summit marker (`ring`, `pillar` or `cairn-pillar`), its `reference` time from `npm run par`, and `needsDash: true` if a gap can only be crossed by dashing.
 
@@ -59,6 +59,7 @@ A new fell also needs an entry in `LEVEL_DEFS` in `src/levels/index.js`, with it
 - **Jumps.** A full jump climbs 3 tiles; 4 needs a wall jump or a climb. A running jump clears 5 tiles on level ground with every vest.
 - **Climbs.** Stamina lasts about 13 tiles of crag on the Ridgeline vest but only about 10 on the Featherweight. Keep single faces to 9 tiles, or add a ledge to rest on.
 - **Chimneys.** For anything taller, use a chimney: two facing walls 3 tiles apart to kick between. If a hanging slab forms one side, leave exactly 3 tiles of headroom under it. With 4, the first kick flies out underneath.
+- **Crouching.** The runner is 11 px tall standing and 6 px crouched, so a gap one tile high can only be passed crouched: by a crouch-jump, a crouched sideways dash or a slide. Crouched, a single tile of rock to windward shelters the runner fully. The solver never crouches, so don't make a route depend on it.
 - **Dashing.** Make the route possible without dashing unless the fell sets `needsDash`. Mint cakes in mid-air let a one-dash vest dash twice across a wide gap.
 - **Wind.** The wind is at 65% strength on the valley floor and full force at the summit, so long jumps high up need to work into a gale. The worst steady Extreme gale is 50 units. With the Featherweight vest, a gap of 8 tiles high on a fell is about the limit, even with a dash and a mint cake.
 - **Length and cairns.** Aim for a reference route (see below) of 35 to 45 seconds, which is a minute or so for a skilled player, and a cairn every 13 to 17 seconds of it.

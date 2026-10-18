@@ -20,11 +20,11 @@
 
 Race from the valley floor to the summit. A good run takes about a minute; your first attempt, in a gale, will take rather longer.
 
-- **A gentle start.** Blencathra opens with a hazard-free stretch through Scales, where wooden fingerposts teach each move (jump, wall kick, climb, loose rock, dash and wind shelter) and name your own keys, buttons or touch controls.
-- **Tight, Celeste-style movement.** Coyote time, jump buffering, variable jump height, wall jumps, stamina-limited climbing, eight-way dashes and corner correction. Super jumps, hypers and wall bounces are there for players who go looking.
+- **A gentle start.** Blencathra opens with a hazard-free stretch through Scales, where wooden fingerposts teach each move (jump, wall kick, climb, loose rock, dash, wind shelter and crouching) and name your own keys, buttons or touch controls.
+- **Tight, Celeste-style movement.** Coyote time, jump buffering, variable jump height, wall jumps, stamina-limited climbing, crouching, eight-way dashes and corner correction. Super jumps, hypers, ultras and wall bounces are there for players who go looking.
 - **Real routes.** Each fell follows its real path, and the places along it (Scales Tarn, the Hole-in-the-Wall, Mickledore and the rest) come up on screen as you reach them.
 - **Seeded weather.** Wind, gusts, rain, sleet, snow and hill fog all come from a seed you can see, type, randomise or share. The same seed brings the same gust at the same moment, so races are fair.
-- **Wind is physics.** It shoves you in the air and less so on the ground. It's gentler in the valley and full force on the tops, and a crag or wall on the windward side gives you shelter. You get about a second's warning of every gust.
+- **Wind is physics.** It shoves you in the air and less so on the ground. It's gentler in the valley and full force on the tops, and a crag or wall on the windward side gives you shelter. Crouch behind a low rock to get right into its lee. You get about a second's warning of every gust.
 - **Loose rock.** Greasy slabs of slate and scree crack as you land, hold you for a moment, then give way. Keep moving.
 - **Three vests** trade speed against stamina, wind resistance and dashes.
 - **Target times.** Gold, silver and bronze for each fell, set from a solver-timed reference route, so you know what a good run looks like.
@@ -80,6 +80,7 @@ The forecast for a seed is shown before you start. **Daily seed** gives everyone
 | Action | Keyboard | Gamepad | Touch |
 |---|---|---|---|
 | Move | Arrows / WASD | Stick / d-pad | On-screen pad |
+| Crouch | Down / S | Stick / d-pad down | ▼ |
 | Jump | C / Space / J | A | Jump |
 | Dash | X / K | X or B | Dash |
 | Grab and climb | Z / L / Left Shift | Bumpers or triggers | Grab |
@@ -124,7 +125,7 @@ Every screen (menus, play, pause, results, replay and touch controls) passes an 
 - **Watch best run** replays your ghost in the weather it ran in, and **Watch this run** replays any run from the results screen.
 - **Ghost's weather** loads the seed your best ghost ran in, for a true like-for-like attempt.
 - After a run, **Copy challenge link** shares the fell, vest and seed, for example `?fell=scafell&weather=extreme&seed=0K3P9QX&vest=mountain`.
-- Tech: **super jump** (jump during a sideways ground dash), **hyper** (down-diagonal dash into the ground, then jump), **wall bounce** (up-dash beside a crag, then jump).
+- Tech: **super jump** (jump during a sideways ground dash), **hyper** (a super from a crouch, or a down-diagonal dash into the ground, then jump), **ultra** (a down-diagonal dash gains 20% speed as it lands), **wall bounce** (up-dash beside a crag, then jump). Crouch-jump then dash sideways, and you stay low enough to thread Helvellyn's Hole-in-the-Wall.
 
 Times and ghosts are stored only in your browser.
 
@@ -206,7 +207,7 @@ Lakeland's mountain rescue teams are unpaid volunteers, on call around the clock
 ## Credits
 
 - **Created by** Ryan McCrickerd, with AI assistance from Claude by Anthropic, through [Claude Code](https://claude.com/claude-code).
-- **Movement** is modelled on [Celeste](https://www.celestegame.com/) by Maddy Thorson and Noel Berry. Its constants and techniques (coyote time, buffering, wall jumps, climbing stamina, dashes, supers and hypers) follow the [player controller they published](https://github.com/NoelFB/Celeste), and the assist mode and crumbling loose rock follow Celeste's lead too.
+- **Movement** is modelled on [Celeste](https://www.celestegame.com/) by Maddy Thorson and Noel Berry. Its constants and techniques (coyote time, buffering, wall jumps, climbing stamina, crouching, dashes, supers, hypers and ultras) follow the [player controller they published](https://github.com/NoelFB/Celeste), and the assist mode and crumbling loose rock follow Celeste's lead too.
 - **Inspiration and real-world heroism:** [Penrith Mountain Rescue Team](https://penrithmrt.org.uk/) and every Lakeland mountain rescue team.
 - **Forecast services** recommended in-game: the Lake District National Park's [Weatherline](https://www.lakedistrictweatherline.co.uk/) and [MWIS](https://www.mwis.org.uk/).
 - **Algorithms:** Mulberry32 random numbers by Tommy Ettinger; FNV-1a hashing by Glenn Fowler, Landon Curt Noll and Kiem-Phong Vo; and A* search by Peter Hart, Nils Nilsson and Bertram Raphael, which times the reference routes.

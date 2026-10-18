@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { TILE } from '../src/config.js';
+import { STEP, TILE, VESTS } from '../src/config.js';
 import { LEVELS, LEVEL_DEFS } from '../src/levels/index.js';
 import { stitch } from '../src/levels/stitch.js';
+import { T } from '../src/level.js';
+import { Player } from '../src/player.js';
+import { inp } from './helpers.js';
 
 for (const level of LEVELS) {
   const { def } = level;
@@ -29,7 +32,7 @@ test('Blencathra teaches every move with signposts before its first hazard', () 
   const words = level.signs.map((s) => s.text);
   for (const s of level.signs) assert.ok(s.text, `signpost at column ${s.x / TILE} has words`);
   const before = (pattern) => level.signs.findIndex((s) => pattern.test(s.text));
-  for (const move of [/\{jump\}/, /kick/, /\{grab\}/, /[Ll]oose/, /\{dash\}/, /wind/]) assert.ok(before(move) >= 0, `a sign mentions ${move}`);
+  for (const move of [/\{jump\}/, /kick/, /\{grab\}/, /[Ll]oose/, /\{dash\}/, /wind/, /\{down\} to crouch/]) assert.ok(before(move) >= 0, `a sign mentions ${move}`);
   // The first stretch is safe: no sharp rocks, water or open drops
   const firstHazard = Math.min(
     ...[...level.def.map.split('\n').entries()].flatMap(([, row]) => [row.indexOf('^'), row.indexOf('~')].filter((i) => i >= 0)),
@@ -41,8 +44,36 @@ test('Blencathra teaches every move with signposts before its first hazard', () 
 test('sign words name actions the game can show controls for', () => {
   for (const level of LEVELS) {
     for (const s of level.signs) {
-      for (const [, action] of s.text.matchAll(/\{(\w+)\}/g)) assert.ok(['jump', 'dash', 'grab', 'up'].includes(action), `{${action}} on ${level.def.name}`);
+      for (const [, action] of s.text.matchAll(/\{(\w+)\}/g)) assert.ok(['jump', 'dash', 'grab', 'up', 'down'].includes(action), `{${action}} on ${level.def.name}`);
     }
+  }
+});
+
+test('Helvellyn: a crouching runner can get through the Hole-in-the-Wall, not just over it', () => {
+  const level = LEVELS.find((l) => l.id === 'helvellyn');
+  const hole = level.places.find((p) => p.name === 'Hole-in-the-Wall');
+  // The gap is one tile high, between the wall and a stub of wall below it
+  const stub = hole.col + 19;
+  const topOf = (col) => [...Array(level.rows).keys()].find((ty) => level.kind(col, ty) === T.SOLID) * TILE;
+  const floor = topOf(hole.col);
+  const wallTop = topOf(stub);
+  // Run in, crouch, crouch-jump, then dash sideways through the gap
+  const through = (vest, run, dashAt) => {
+    const p = new Player(level, { vest });
+    p.spawn(hole.x, floor);
+    for (let f = 0; f < run; f++) p.update(inp({ moveX: 1 }), STEP);
+    p.update(inp({ moveX: 1, moveY: 1 }), STEP);
+    for (let f = 0; f < 120; f++) {
+      p.update(inp({ moveX: 1, moveY: f < dashAt ? 1 : 0, jump: f < 4, jumpPressed: f === 0, dashPressed: f === dashAt }), STEP);
+      if (p.y < wallTop) return false;
+      if (p.x > hole.x + 24 * TILE) return true;
+    }
+    return false;
+  };
+  for (const vest of VESTS) {
+    let ok = false;
+    for (let run = 30; run < 80 && !ok; run++) for (let at = 4; at < 16 && !ok; at++) ok = through(vest, run, at);
+    assert.ok(ok, vest.name);
   }
 });
 

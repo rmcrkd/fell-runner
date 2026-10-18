@@ -1,9 +1,12 @@
 import { Audio, CAPTIONS } from './audio.js';
+import { FixedClock } from './clock.js';
 import { DIFFICULTIES, STEP, VESTS, byId } from './config.js';
-import { ACTION_LABELS, ACTIONS, DEFAULT_BINDINGS, Input, keyName } from './input.js';
+import { ACTION_LABELS, ACTIONS, DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS, Input, PAD_ACTIONS, keyName, padName } from './input.js';
 import { LEVELS, levelById } from './levels/index.js';
 import { NO_INPUT, ST } from './player.js';
 import { Renderer } from './render.js';
+import { Replay } from './replay.js';
+import { RouteMap } from './routemap.js';
 import { codeToSeed, dailySeed, randomSeed, seedToCode } from './rng.js';
 import { Run, formatTime, isAssisted, speakTime } from './run.js';
 import { clearRecords, getGhost, getRecord, loadLastSetup, loadSettings, saveLastSetup, saveSettings, submitRun } from './storage.js';
@@ -51,11 +54,12 @@ function assistFromSettings() {
 // ---------------------------------------------------------------------------
 // Screens and focus
 
-let mode = 'menu'; // menu | playing | paused | results
+let mode = 'menu'; // menu | playing | paused | results | replay
 let run = null;
 const screenStack = [];
 
 function showScreen(id, { push = true } = {}) {
+  cancelCapture();
   const current = $$('.screen').find((s) => !s.hidden);
   if (push && current && current.id !== `screen-${id}`) screenStack.push(current.id.replace('screen-', ''));
   $$('.screen').forEach((s) => (s.hidden = s.id !== `screen-${id}`));
@@ -70,7 +74,15 @@ function showScreen(id, { push = true } = {}) {
   $('#menus').scrollTop = 0;
 }
 
+// Leaving the controls table abandons any half-finished remap, so it can't
+// grab a key or button later.
+function cancelCapture() {
+  input.capture = null;
+  input.padCapture = null;
+}
+
 function hideScreens() {
+  cancelCapture();
   $$('.screen').forEach((s) => (s.hidden = true));
   $('#menus').classList.add('empty');
   screenStack.length = 0;
@@ -95,7 +107,7 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('keydown', (e) => {
   audio.unlock();
-  if (e.key === 'Escape' && mode !== 'playing' && !input.capture) {
+  if (e.key === 'Escape' && mode !== 'playing' && mode !== 'replay' && !input.capture && !input.padCapture) {
     const visible = $$('.screen').find((s) => !s.hidden);
     if (visible && visible.id !== 'screen-title' && visible.id !== 'screen-results') {
       e.preventDefault();
@@ -105,8 +117,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 const announcer = $('#announcer');
-function announce(text) {
-  if (!settings.announce) return;
+function announce(text, { force = false } = {}) {
+  if (!settings.announce && !force) return;
   announcer.textContent = '';
   setTimeout(() => (announcer.textContent = text), 50);
 }
@@ -127,12 +139,17 @@ function radioCard(name, value, checked, inner) {
   return label;
 }
 
-function bestLine(levelId) {
+// Unassisted and assisted bests side by side: assisted times are kept apart,
+// not hidden.
+function bestLine(levelKey) {
   const parts = DIFFICULTIES.map((d) => {
-    const rec = getRecord(levelId, d.id);
+    const rec = getRecord(levelKey, d.id);
     return `${d.name}: ${rec?.best ? formatTime(rec.best.frames) : '–'}`;
   });
-  return `Best · ${parts.join(' · ')}`;
+  const assisted = DIFFICULTIES.map((d) => [d, getRecord(levelKey, d.id, true)])
+    .filter(([, rec]) => rec?.best)
+    .map(([d, rec]) => `${d.name}: ${formatTime(rec.best.frames)}`);
+  return `Best · ${parts.join(' · ')}${assisted.length ? `<br>Assisted · ${assisted.join(' · ')}` : ''}`;
 }
 
 function renderSetup() {
@@ -146,7 +163,7 @@ function renderSetup() {
         `<span class="card-title">${l.def.name}</span>
          <span class="card-sub">${l.def.route} · ${l.def.heightM} m · ${'▲'.repeat(l.def.grade)}<span class="sr-only"> difficulty ${l.def.grade} of 3</span></span>
          <span class="card-body">${l.def.blurb}</span>
-         <span class="card-best">${bestLine(l.id)}</span>`,
+         <span class="card-best">${bestLine(l.key)}</span>`,
       ),
     ),
   );
@@ -186,10 +203,11 @@ function renderSetup() {
 function updateForecast() {
   const weather = createWeather(setup.seed, currentDifficulty(), setup.levelId);
   $('#forecast').textContent = weather.describe();
-  const ghost = getGhost(setup.levelId, setup.difficultyId);
+  const ghost = getGhost(currentLevel().key, setup.difficultyId);
   const ghostBtn = $('#seed-ghost');
   ghostBtn.hidden = !ghost || ghost.seed === setup.seed;
   if (ghost) ghostBtn.dataset.seed = ghost.seed;
+  $('#setup-replay').hidden = !bestGhost();
   saveLastSetup({ levelId: setup.levelId, vestId: setup.vestId, difficultyId: setup.difficultyId });
   refreshAttract();
 }
@@ -248,13 +266,20 @@ function renderSettings() {
 }
 
 function renderBindings() {
-  const bindings = settings.bindings ?? DEFAULT_BINDINGS;
+  const bindings = input.bindings;
+  const pads = settings.padBindings ?? DEFAULT_PAD_BINDINGS;
   $('#bindings-body').replaceChildren(
     ...ACTIONS.map((action) => {
       const tr = document.createElement('tr');
+      const label = ACTION_LABELS[action];
       const keys = bindings[action].map(keyName).join(', ') || 'unbound';
-      tr.innerHTML = `<th scope="row">${ACTION_LABELS[action]}</th><td><kbd>${keys}</kbd></td><td><button type="button" aria-label="Change key for ${ACTION_LABELS[action]}, currently ${keys}">Change</button></td>`;
-      $('button', tr).addEventListener('click', (e) => listenForKey(action, e.currentTarget));
+      const remappable = PAD_ACTIONS.includes(action);
+      const buttons = remappable ? (pads[action] ?? []).map(padName).join(', ') || 'unbound' : 'Stick or d-pad';
+      tr.innerHTML = `<th scope="row">${label}</th>
+        <td><kbd>${keys}</kbd> <button type="button" class="change-key" aria-label="Change key for ${label}, currently ${keys}">Change</button></td>
+        <td><kbd>${buttons}</kbd>${remappable ? ` <button type="button" class="change-pad" aria-label="Change gamepad button for ${label}, currently ${buttons}">Change</button>` : ''}</td>`;
+      $('.change-key', tr).addEventListener('click', (e) => listenForKey(action, e.currentTarget));
+      $('.change-pad', tr)?.addEventListener('click', (e) => listenForPad(action, e.currentTarget));
       return tr;
     }),
   );
@@ -267,7 +292,7 @@ function listenForKey(action, button) {
   input.capture = (code) => {
     button.classList.remove('listening');
     if (code !== 'Escape' || action === 'pause') {
-      const next = structuredClone(settings.bindings ?? DEFAULT_BINDINGS);
+      const next = structuredClone(input.bindings);
       // A key can only do one thing: remove it from any other action first
       for (const a of ACTIONS) next[a] = next[a].filter((k) => k !== code);
       next[action] = [code, ...next[action]].slice(0, 3);
@@ -276,15 +301,34 @@ function listenForKey(action, button) {
       announce(`${ACTION_LABELS[action]} set to ${keyName(code)}.`);
     }
     renderBindings();
-    $$('#bindings-body button')[ACTIONS.indexOf(action)]?.focus();
+    $$('#bindings-body .change-key')[ACTIONS.indexOf(action)]?.focus();
+  };
+}
+
+function listenForPad(action, button) {
+  button.textContent = 'Press a button…';
+  button.classList.add('listening');
+  announce(`Press a gamepad button for ${ACTION_LABELS[action]}, or Escape to cancel.`);
+  input.padCapture = (index) => {
+    if (index != null) {
+      const next = structuredClone({ ...DEFAULT_PAD_BINDINGS, ...(settings.padBindings ?? {}) });
+      for (const a of PAD_ACTIONS) next[a] = next[a].filter((b) => b !== index);
+      next[action] = [index];
+      settings.padBindings = next;
+      saveSettings(settings);
+      announce(`${ACTION_LABELS[action]} set to ${padName(index)}.`);
+    }
+    renderBindings();
+    $$('#bindings-body .change-pad')[PAD_ACTIONS.indexOf(action)]?.focus();
   };
 }
 
 $('#bindings-reset').addEventListener('click', () => {
   settings.bindings = null;
+  settings.padBindings = null;
   saveSettings(settings);
   renderBindings();
-  announce('Keys reset to defaults.');
+  announce('Keys and gamepad buttons reset to defaults.');
 });
 
 settingsForm.addEventListener('input', (e) => {
@@ -312,6 +356,7 @@ function applySettings() {
   document.body.classList.toggle('contrast', settings.highContrast);
   renderer.refreshPalette();
   audio.applyVolume();
+  hud.route.hidden = !settings.showRouteMap;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,41 +379,142 @@ const hud = {
   staminaFill: $('#hud-stamina-fill'),
   banner: $('#hud-banner'),
   caption: $('#hud-caption'),
+  place: $('#hud-place'),
+  shelter: $('#hud-wind-shelter'),
+  route: $('#hud-route'),
+  replay: $('#hud-replay'),
 };
+
+const routeMap = new RouteMap(hud.route);
 
 let ghostRecord = null;
 let bannerTimer = 0;
 let splitTimer = 0;
 let captionTimer = 0;
+let placeTimer = 0;
+let placeIndex = 0;
 let warnedGust = -1;
-let accumulator = 0;
+const clock = new FixedClock();
 
 function startRun() {
   audio.unlock();
+  scripted = null;
   const level = currentLevel();
   const difficulty = currentDifficulty();
   const assist = assistFromSettings();
   const assistedBucket = isAssisted(assist);
-  const ghost = settings.showGhost ? getGhost(level.id, difficulty.id, assistedBucket) : null;
-  ghostRecord = getRecord(level.id, difficulty.id, assistedBucket);
+  const ghost = settings.showGhost ? getGhost(level.key, difficulty.id, assistedBucket) : null;
+  ghostRecord = getRecord(level.key, difficulty.id, assistedBucket);
   run = new Run({ level, vest: currentVest(), difficulty, seed: setup.seed, assist, ghost: ghost?.data ?? null });
-  renderer.setLevel(level, run.weather);
-  setVestColours(currentVest());
+  beginView(level, run.weather, currentVest());
   renderer.updateCamera(cameraTarget(), 0, true);
   mode = 'playing';
   input.gameActive = true;
   input.resetGameState();
-  accumulator = 0;
+  clock.reset();
   warnedGust = -1;
   hideScreens();
-  hud.root.hidden = false;
   hud.assist.hidden = !run.assisted;
-  hud.split.hidden = true;
   $('#game').setAttribute('aria-label', `${level.def.name}, ${level.def.route}. ${run.weather.describe()}.`);
   showBanner(`${level.def.name} <small>${level.def.route} · ${run.weather.describe()} · seed ${seedToCode(setup.seed)}</small>`, 3.5);
   announce(`${level.def.name} ${level.def.route}. ${run.weather.describe()}. The clock starts when you move.`);
   updateTouchVisibility();
 }
+
+// Shared by live runs and replays: fresh renderer, HUD and route map.
+function beginView(level, weather, vest) {
+  renderer.setLevel(level, weather);
+  setVestColours(vest);
+  routeMap.setLevel(level);
+  hud.route.hidden = !settings.showRouteMap;
+  hud.root.hidden = false;
+  hud.split.hidden = true;
+  hud.place.hidden = true;
+  hud.caption.hidden = true;
+  captionTimer = 0;
+  hud.replay.hidden = true;
+  hud.dashes.hidden = false;
+  $('#replay-stop').hidden = true;
+  placeIndex = 0;
+}
+
+// ---------------------------------------------------------------------------
+// Replays: watch a saved ghost, or the run you just finished, in its weather
+
+let replayFrom = null;
+
+function watchReplay({ level, ghost, difficulty, seed, vest, label }) {
+  audio.unlock();
+  replayFrom = { screen: $('#screen-results').hidden ? 'setup' : 'results', run };
+  run = new Replay({ level, ghost, difficulty, seed, vest });
+  beginView(level, run.weather, vest);
+  hud.dashes.hidden = true;
+  hud.stamina.hidden = true;
+  hud.assist.hidden = true;
+  hud.gust.hidden = true;
+  hud.replay.hidden = false;
+  renderer.updateCamera(cameraTarget(), 0, true);
+  mode = 'replay';
+  input.gameActive = true;
+  input.resetGameState();
+  clock.reset();
+  hideScreens();
+  const stop = $('#replay-stop');
+  stop.hidden = false;
+  stop.focus();
+  showBanner(`Replay: ${label} <small>${level.def.name} · ${vest.name} · weather: ${difficulty.name} · seed ${seedToCode(seed)}</small>`, 4);
+  announce(`Replay of ${label} on ${level.def.name}. Press Stop replay, or pause, to stop.`);
+  updateTouchVisibility();
+}
+
+function replayStep() {
+  run.update();
+  const g = run.pose();
+  if (g) checkPlace(g.x);
+  for (const e of run.events) {
+    audio.play(e.type);
+    if (e.type === 'finish') return stopReplay();
+  }
+}
+
+function stopReplay() {
+  if (mode !== 'replay') return;
+  $('#replay-stop').hidden = true;
+  input.gameActive = false;
+  hud.root.hidden = true;
+  const from = replayFrom;
+  replayFrom = null;
+  if (from.screen === 'results') {
+    run = from.run;
+    mode = 'results';
+    updateTouchVisibility();
+    showScreen('results', { push: false });
+  } else {
+    run = null;
+    mode = 'menu';
+    updateTouchVisibility();
+    refreshAttract();
+    screenStack.length = 0;
+    screenStack.push('title');
+    showScreen('setup', { push: false });
+  }
+}
+
+$('#replay-stop').addEventListener('click', stopReplay);
+
+function bestGhost() {
+  return getGhost(currentLevel().key, setup.difficultyId) ?? getGhost(currentLevel().key, setup.difficultyId, true);
+}
+
+$('#setup-replay').addEventListener('click', () => {
+  const ghost = bestGhost();
+  if (!ghost) return;
+  watchReplay({ level: currentLevel(), ghost: ghost.data, difficulty: currentDifficulty(), seed: ghost.seed, vest: byId(VESTS, ghost.vest), label: 'your best run' });
+});
+
+$('#results-replay').addEventListener('click', () => {
+  watchReplay({ level: run.level, ghost: run.recorder.encode(), difficulty: run.difficulty, seed: run.seed, vest: run.vest, label: 'this run' });
+});
 
 function setVestColours(vest) {
   renderer.vestColour = vest.colour;
@@ -376,6 +522,10 @@ function setVestColours(vest) {
 }
 
 function cameraTarget() {
+  if (run.replay) {
+    const g = run.pose();
+    return { x: g.x + 4 + g.facing * 20, y: g.y - 5 };
+  }
   const p = run.player;
   return { x: p.x + 4 + p.facing * 20 + p.vx * 0.12, y: p.y + 5 - 10 };
 }
@@ -423,8 +573,13 @@ function quitToMenu() {
 }
 
 input.onAction = (action) => {
-  if (action === 'pause') mode === 'playing' ? pause() : mode === 'paused' && resume();
+  if (action === 'pause') {
+    if (mode === 'playing') pause();
+    else if (mode === 'paused') resume();
+    else if (mode === 'replay') stopReplay();
+  }
   if (action === 'restart' && mode === 'playing') restart();
+  if (action === 'status' && (mode === 'playing' || mode === 'replay')) announce(statusText(), { force: true });
 };
 
 $('#pause-resume').addEventListener('click', resume);
@@ -439,8 +594,10 @@ let scripted = null;
 let manual = false;
 
 function step() {
+  if (run.replay) return replayStep();
   const inp = scripted ? (scripted.shift() ?? NO_INPUT) : input.sample();
   run.update(inp);
+  checkPlace(run.player.x);
   renderer.handleEvents(run.events, run.player);
   for (const e of run.events) {
     audio.play(e.type);
@@ -450,8 +607,56 @@ function step() {
   }
 }
 
+// The real place names along the route, shown as you reach each one.
+function checkPlace(x) {
+  const places = run.level.places;
+  let i = placeIndex;
+  while (i + 1 < places.length && x >= places[i + 1].x) i++;
+  if (i === placeIndex) return;
+  const changed = places[i].name !== places[placeIndex].name;
+  placeIndex = i;
+  if (!changed) return;
+  hud.place.textContent = places[i].name;
+  hud.place.hidden = false;
+  placeTimer = 2.5;
+  announce(places[i].name);
+}
+
+// A spoken summary on demand, for players who can't see the HUD.
+function statusText() {
+  const parts = [`${speakTime(run.frames)}`];
+  const place = run.level.places[placeIndex]?.name;
+  if (place) parts.push(place);
+  const next = run.level.cairns[run.checkpoint.index + 1];
+  parts.push(next ? `Next cairn: ${next.name}` : 'Next: the summit');
+  const wind = feltWind();
+  parts.push(Math.abs(wind) < 4 ? 'Calm' : `${windWord(wind)}, ${toMph(wind)} miles an hour from the ${wind > 0 ? 'west' : 'east'}${exposure() < 0.6 ? ', sheltered' : ''}`);
+  const gust = run.started && !run.replay ? run.weather.nextGust(run.time, 3) : null;
+  if (gust) parts.push(`Gust from the ${gust.dir > 0 ? 'west' : 'east'} in ${Math.max(0, gust.in).toFixed(1)} seconds`);
+  const p = run.player;
+  if (p) {
+    parts.push(run.assist.dashMode === 'infinite' ? 'Infinite dashes' : `${p.dashes} of ${p.maxDashes} dashes`);
+    if (!run.assist.infiniteStamina) parts.push(`Stamina ${Math.round((Math.max(0, p.stamina) / p.maxStamina) * 100)} percent`);
+  }
+  if (run.deaths) parts.push(`${run.deaths} fall${run.deaths === 1 ? '' : 's'}`);
+  return parts.join('. ') + '.';
+}
+
+// Wind where the runner is: the valley is gentler, rock gives shelter.
+function exposure() {
+  const p = run.player;
+  if (p) return p.exposure;
+  const g = run.pose();
+  return g ? run.level.exposureAt(g.x, g.y, 8, 11, Math.sign(run.wind)) : 1;
+}
+
+function feltWind() {
+  const wind = run.started ? run.wind : run.weather.windAt(0);
+  return wind * exposure();
+}
+
 function onCheckpoint(e) {
-  const name = run.level.def.cairns[e.index] ?? `Cairn ${e.index + 1}`;
+  const name = run.level.cairns[e.index].name;
   const best = ghostRecord?.best?.splits?.[e.index];
   let text = `${name}: ${formatTime(e.frames)}`;
   hud.split.className = 'hud-split';
@@ -476,7 +681,7 @@ function finishRun() {
   const level = run.level;
   const difficulty = run.difficulty;
   const frames = run.frames;
-  const result = submitRun(level.id, difficulty.id, run.assisted, {
+  const result = submitRun(level.key, difficulty.id, run.assisted, {
     frames,
     deaths: run.deaths,
     vest: run.vest.id,
@@ -513,7 +718,7 @@ function renderResults({ improved, previous }) {
 
   const table = $('#results-splits');
   const bestSplits = previous?.splits ?? [];
-  const names = level.def.cairns;
+  const names = level.cairns.map((c) => c.name);
   const splitRows = run.splits
     .map((f, i) => {
       if (f == null) return '';
@@ -577,15 +782,17 @@ function updateHud(dt) {
   hud.deaths.textContent = `✕ ${run.deaths}`;
   hud.deaths.title = `${run.deaths} falls`;
 
-  const wind = run.started ? run.wind : run.weather.windAt(0);
+  const wind = feltWind();
   const word = windWord(wind);
   hud.windWord.textContent = word;
   hud.windDetail.textContent = Math.abs(wind) < 4 ? '' : `${toMph(wind)} mph · ${wind > 0 ? 'from the west' : 'from the east'}`;
+  const raw = run.started ? run.wind : run.weather.windAt(0);
+  hud.shelter.hidden = !(Math.abs(raw) >= 6 && exposure() < 0.6);
   const scale = 0.6 + Math.min(1, Math.abs(wind) / 60) * 0.7;
   hud.windArrow.style.transform = `scaleX(${wind < 0 ? -1 : 1}) scale(${scale})`;
   hud.windArrow.style.opacity = Math.abs(wind) < 4 ? 0.3 : 1;
 
-  const gust = settings.gustWarnings && run.started ? run.weather.nextGust(run.time) : null;
+  const gust = settings.gustWarnings && run.started && !run.replay ? run.weather.nextGust(run.time) : null;
   if (gust) {
     hud.gust.hidden = false;
     hud.gustText.textContent = `Gust ${gust.dir > 0 ? '→' : '←'}`;
@@ -598,6 +805,18 @@ function updateHud(dt) {
     }
   } else {
     hud.gust.hidden = true;
+  }
+
+  if (!hud.route.hidden) {
+    const g = run.ghostPose();
+    const you = p ? { x: p.x, y: p.y + p.h } : null;
+    routeMap.update(you ?? (g && { x: g.x, y: g.y + 11 }), g && !run.replay && settings.showGhost ? { x: g.x, y: g.y + 11 } : null, run.checkpoint.index);
+  }
+  if (placeTimer > 0 && (placeTimer -= dt) <= 0) hud.place.hidden = true;
+  if (!p) {
+    if (bannerTimer > 0 && (bannerTimer -= dt) <= 0) hud.banner.hidden = true;
+    if (splitTimer > 0 && (splitTimer -= dt) <= 0) hud.split.hidden = true;
+    return;
   }
 
   const max = p.maxDashes;
@@ -670,7 +889,8 @@ addEventListener('touchstart', () => {
 
 function updateTouchVisibility() {
   $('#touch').hidden = !(touchUsed && mode === 'playing');
-  document.body.classList.toggle('playing', mode === 'playing' || mode === 'paused');
+  document.body.classList.toggle('touching', !$('#touch').hidden);
+  document.body.classList.toggle('playing', mode === 'playing' || mode === 'paused' || mode === 'replay');
 }
 
 for (const btn of $$('#touch [data-touch]')) {
@@ -679,7 +899,7 @@ for (const btn of $$('#touch [data-touch]')) {
     e.preventDefault();
     btn.setPointerCapture?.(e.pointerId);
     btn.classList.add('on');
-    if (action === 'pause') return pause();
+    if (action === 'pause') return input.onAction('pause');
     input.touch[action] = true;
     input.press(action);
   };
@@ -735,22 +955,19 @@ function frame(now) {
   if (manual) return requestAnimationFrame(frame);
   input.pollPads();
 
-  if (mode === 'playing') {
-    accumulator += dt * Number(settings.speed);
-    let steps = 0;
-    while (accumulator >= STEP && steps < 6 && mode === 'playing') {
-      step();
-      accumulator -= STEP;
-      steps++;
-    }
-    if (steps === 6) accumulator = 0;
+  const live = mode === 'playing' || mode === 'replay';
+  if (live) {
+    const steps = clock.advance(dt, mode === 'replay' ? 1 : Number(settings.speed));
+    const before = mode;
+    for (let i = 0; i < steps && mode === before; i++) step();
   }
 
   if (run && mode !== 'menu') {
-    if (mode === 'playing') renderer.updateCamera(cameraTarget(), dt);
+    const moving = mode === 'playing' || mode === 'replay';
+    if (moving) renderer.updateCamera(cameraTarget(), dt);
     const animTime = run.started ? run.time : now / 1000;
-    renderer.draw({ run, time: animTime, dt: mode === 'playing' ? dt : 0 });
-    if (mode === 'playing') updateHud(dt);
+    renderer.draw({ run, time: animTime, dt: moving ? dt : 0 });
+    if (moving) updateHud(dt);
     audio.setWeather(run.wind || run.weather.windAt(0), run.weather.precip, true);
   } else {
     drawAttract(dt);
@@ -785,9 +1002,15 @@ globalThis.fellRunner = {
   },
   // Start a run driven by a list of per-step inputs.
   playScripted(inputs, { manualStepping = false } = {}) {
-    scripted = inputs.slice();
     manual = manualStepping;
     startRun();
+    scripted = inputs.slice();
+  },
+  // Back to real-time play with the real controls.
+  resumeLoop() {
+    manual = false;
+    scripted = null;
+    last = performance.now();
   },
   // With manual stepping: advance n physics steps, then draw one frame.
   advance(n = 1) {
@@ -796,7 +1019,7 @@ globalThis.fellRunner = {
     const dt = n * STEP;
     if (mode === 'playing') renderer.updateCamera(cameraTarget(), dt);
     renderer.draw({ run, time: run.started ? run.time : 0, dt });
-    if (mode === 'playing') updateHud(dt);
-    return { frames: run.frames, finished: run.finished, x: run.player.x };
+    if (mode === 'playing' || mode === 'replay') updateHud(dt);
+    return { frames: run.frames, finished: run.finished, x: run.player?.x ?? run.pose?.()?.x };
   },
 };

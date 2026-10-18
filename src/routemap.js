@@ -47,9 +47,13 @@ export class RouteMap {
       el('path', { class: 'rm-ground', d: `M0,${H} L${pts.join(' L')} L${W},${H} Z` }),
       ...level.cairns.map((c) => el('path', { class: 'rm-cairn', 'data-i': c.index, d: this.triangle(this.sx(c.x + 4), this.sy(c.y) - 1) })),
       el('path', { class: 'rm-summit', d: this.flag(this.sx(level.finish.x + 4), this.sy(level.finish.y)) }),
-      (this.ghost = el('circle', { class: 'rm-ghost', r: 2.6, style: 'display:none' })),
-      (this.you = el('circle', { class: 'rm-you', r: 3, style: 'display:none' })),
+      (this.ghost = el('circle', { class: 'rm-ghost', r: 2.6 })),
+      (this.you = el('circle', { class: 'rm-you', r: 3 })),
     );
+    // Hidden through the style property: a style="" attribute would break the
+    // Content-Security-Policy in index.html
+    this.ghost.style.display = 'none';
+    this.you.style.display = 'none';
   }
 
   sx(x) {

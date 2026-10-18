@@ -37,7 +37,8 @@
     "test:quick": "node --test $(ls tests/*.test.js | grep -v /route-)",
     "par": "node tools/par.js",
     "metadata": "node tools/metadata.js check",
-    "metadata:sync": "node tools/metadata.js sync"
+    "metadata:sync": "node tools/metadata.js sync",
+    "links": "node tools/links.js"
   },
   "engines": {
     "node": ">=22"

@@ -1,0 +1,19 @@
+# Keeps the pinned GitHub Actions and the dev-only browser tools up to date.
+# The game itself has no dependencies to update.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directory: /tools/browser
+    schedule:
+      interval: monthly
+    groups:
+      browser-tools:
+        patterns: ['*']

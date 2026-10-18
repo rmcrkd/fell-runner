@@ -124,6 +124,7 @@ npm start            # serves the game at http://localhost:8080
 npm test             # everything, including proof that every fell can be finished (about 2 minutes)
 npm run test:quick   # unit tests only (under a second)
 npm run par          # reference times and cairn spacing for each fell
+npm run links        # check the donation, forecast and credit links still work
 ```
 
 You only need Node 22 or later, and only for the dev server and tests. The game itself is static files.
@@ -169,6 +170,10 @@ tools/
 A solved storm route is then replayed frame by frame through a real `Run`, cairn by cairn, to the summit.
 
 **Every fell is about a minute long.** `npm run par` finds a near-optimal route with an A* search over the same physics. The reference routes take 36 s (Blencathra), 40 s (Helvellyn) and 45 s (Scafell Pike), which puts a skilled player at roughly 50 to 60 seconds. Cairns fall every 13 to 17 seconds of reference route.
+
+## Privacy and security
+
+Fell Runner has no accounts, server, analytics, cookies or third-party scripts. Your settings, times and ghosts stay in your own browser. A strict Content-Security-Policy lets the page run only its own files, the workflows pin every action to an exact commit, and a monthly check makes sure the donation and forecast links still work. To report a security problem privately, see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

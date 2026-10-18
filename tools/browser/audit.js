@@ -23,7 +23,7 @@ let checks = 0;
 
 for (const theme of ['normal', 'contrast']) {
   for (const vp of VIEWPORTS) {
-    const { page, errors } = await openGame(browser, server.url, vp);
+    const { page, errors } = await openGame(browser, server.url, { ...vp, bypassCSP: true });
     await page.addScriptTag({ content: axeSource });
     if (theme === 'contrast') {
       await page.evaluate(() => {

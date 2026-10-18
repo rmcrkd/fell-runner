@@ -182,14 +182,14 @@ function renderSetup() {
 
   const pct = (v) => Math.round(v * 100);
   const bar = (label, value, max, text) =>
-    `<span aria-hidden="true">${label}</span><span class="bar" aria-hidden="true"><span style="width:${Math.min(100, (value / max) * 100)}%"></span></span><span class="sr-only">${label}: ${text}.</span>`;
+    `<span aria-hidden="true">${label}</span><span class="bar" aria-hidden="true"><span data-width="${Math.min(100, (value / max) * 100)}%"></span></span><span class="sr-only">${label}: ${text}.</span>`;
   $('#pick-vest').replaceChildren(
     ...VESTS.map((v) =>
       radioCard(
         'vest',
         v.id,
         v.id === setup.vestId,
-        `<span class="card-title"><span class="vest-swatch" style="background:${v.colour}" aria-hidden="true"></span>${v.name}</span>
+        `<span class="card-title"><span class="vest-swatch" data-colour="${v.colour}" aria-hidden="true"></span>${v.name}</span>
          <span class="card-body">${v.blurb}</span>
          <span class="stats-bars">
            ${bar('Speed', v.runMult, 1.1, `${pct(v.runMult)}%`)}
@@ -200,6 +200,11 @@ function renderSetup() {
       ),
     ),
   );
+
+  // Set through the style property, not style="" in the markup, which the
+  // Content-Security-Policy in index.html forbids
+  for (const el of $$('#pick-vest [data-width]')) el.style.width = el.dataset.width;
+  for (const el of $$('#pick-vest [data-colour]')) el.style.background = el.dataset.colour;
 
   $('#pick-difficulty').replaceChildren(
     ...DIFFICULTIES.map((d) =>

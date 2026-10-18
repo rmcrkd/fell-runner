@@ -113,7 +113,7 @@ function hook() {
   const reason = [
     'The repository metadata is out of step:',
     ...problems.map((p) => `- ${p}`),
-    'package.json is the source of truth (description, homepage, keywords = topics, version). Fix CITATION.cff to match it, and once the package.json values are on main (or the user has asked), run `npm run metadata:sync` to update GitHub. If they are only on an unmerged branch, say so in your hand-over instead. See "GITHUB" in PROMPT.txt.',
+    'package.json is the source of truth (description, homepage, keywords = topics, version). Fix CITATION.cff to match it, and once the package.json values are on main (or the user has asked), run `npm run metadata:sync` to update GitHub. If they are only on an unmerged branch, say so in your hand-over instead. See "Project metadata" in CONTRIBUTING.md.',
   ].join('\n');
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
 }

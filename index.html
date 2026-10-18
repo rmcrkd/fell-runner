@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- Only this site's own files may run or load: no inline scripts or styles, no third parties -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'" />
     <title>Fell Runner</title>
     <meta name="description" content="A Celeste-style speedrunning platformer over three notorious Lake District fells, with seeded weather, wind physics, ghosts and full accessibility options." />
     <meta name="theme-color" content="#1d2a35" />

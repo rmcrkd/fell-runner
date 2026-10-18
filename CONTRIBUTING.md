@@ -108,6 +108,8 @@ Change the values in `package.json`, update `CITATION.cff` to match (bump its `v
 - Keep game logic (`player.js`, `run.js`, `weather.js`, `level.js`, `clock.js`) free of DOM access so it stays testable in Node, and keep the simulation on the fixed 60 Hz step so runs, ghosts and weather replay exactly.
 - UI belongs in accessible HTML, not on the canvas. New controls need labels, keyboard access, visible focus, and a way to work without colour.
 - Don't add flashing effects. Anything that moves should respect the reduce-motion setting.
+- No inline `<script>`, `<style>` or `style="…"` attributes, and nothing loaded from other sites: the Content-Security-Policy in `index.html` blocks them, and `npm run keyboard` fails on any violation. Set styles through the element's `style` property. See [SECURITY.md](SECURITY.md).
+- If you add or change an external link, run `npm run links`.
 
 ## Pull requests
 

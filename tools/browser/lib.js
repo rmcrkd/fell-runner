@@ -56,9 +56,12 @@ export async function launch() {
 }
 
 // Opens the game with empty storage and returns the page plus a live list of
-// console errors, warnings, page errors and failed requests.
-export async function openGame(browser, url, { width = 1280, height = 720, mobile = false, scale = 1, query = '' } = {}) {
+// console errors, warnings, page errors and failed requests. Content-Security-
+// Policy violations show up as console errors, so every tool checks the policy
+// too, except the audit, which has to inject axe-core (`bypassCSP`).
+export async function openGame(browser, url, { width = 1280, height = 720, mobile = false, scale = 1, query = '', bypassCSP = false } = {}) {
   const page = await browser.newPage();
+  if (bypassCSP) await page.setBypassCSP(true);
   const errors = [];
   page.on('console', (m) => {
     if (m.type() === 'error' || m.type() === 'warning') errors.push(`${m.type()}: ${m.text()}`);

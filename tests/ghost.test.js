@@ -40,7 +40,7 @@ test('the same inputs in the same seeded weather always record the same ghost', 
   const vest = byId(VESTS, 'featherweight');
   const extreme = byId(DIFFICULTIES, 'extreme');
   // Run right and jump every so often, for twenty seconds
-  const inputs = Array.from({ length: 1200 }, (_, i) => ({ moveX: 1, moveY: 0, jump: i % 40 < 12, jumpPressed: i % 40 === 0, dashPressed: i % 90 === 45, grab: false }));
+  const inputs = Array.from({ length: 1200 }, (_, i) => ({ moveX: 1, moveY: 0, jump: i % 40 < 12, jumpPressed: i % 40 === 0, dashPressed: i % 90 === 45 }));
   const record = (seed) => {
     const run = new Run({ level, vest, difficulty: extreme, seed });
     for (const input of inputs) run.update(input);

@@ -39,9 +39,6 @@ export function createWeather(seed, difficulty, levelId = '') {
     }
   }
 
-  // Rain and snow make the rock greasy: less grip when stopping or turning.
-  const grip = precipType === 'none' ? 1 : 1 - 0.45 * precip;
-
   function gustAt(t) {
     for (const g of gusts) {
       if (g.start > t) break;
@@ -81,7 +78,6 @@ export function createWeather(seed, difficulty, levelId = '') {
     precipType,
     snowy,
     fog,
-    grip,
     gusts,
     windAt,
     nextGust,
@@ -91,8 +87,8 @@ export function createWeather(seed, difficulty, levelId = '') {
 
 const COMPASS = { 1: 'westerly', '-1': 'easterly' };
 
-// Drift speeds are game units. For display they map to plausible fell-top
-// wind speeds: an Extreme storm blows 30 to 50 mph with gusts towards 90,
+// Wind speeds are game units. For display they map to plausible fell-top
+// wind speeds: an Extreme storm blows 30 to 50 mph with gusts towards 115,
 // a Normal day 10 to 30 mph.
 export const MPH_PER_UNIT = 1.3;
 export const toMph = (speed) => Math.round(Math.abs(speed) * MPH_PER_UNIT);

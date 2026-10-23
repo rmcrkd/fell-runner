@@ -12,7 +12,6 @@ test('no-weather difficulty is completely calm and dry', () => {
     const w = createWeather(seed, none, 'x');
     assert.equal(w.precipType, 'none');
     assert.equal(w.fog, 0);
-    assert.equal(w.grip, 1);
     for (let t = 0; t < 120; t += 0.5) assert.equal(w.windAt(t), 0);
     assert.equal(w.nextGust(0, 999), null);
   }

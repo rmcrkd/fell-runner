@@ -2,7 +2,7 @@
 // step. "Pressed" flags latch between steps so a quick tap is never lost,
 // even if the display runs slower than the simulation.
 
-export const ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'dash', 'grab', 'pause', 'restart', 'status'];
+export const ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'dash', 'pause', 'restart', 'status'];
 
 export const ACTION_LABELS = {
   left: 'Move left',
@@ -11,7 +11,6 @@ export const ACTION_LABELS = {
   down: 'Down / crouch',
   jump: 'Jump',
   dash: 'Dash',
-  grab: 'Grab / climb',
   pause: 'Pause',
   restart: 'Restart run',
   status: 'Read out status',
@@ -24,7 +23,6 @@ export const DEFAULT_BINDINGS = {
   down: ['ArrowDown', 'KeyS'],
   jump: ['KeyC', 'Space', 'KeyJ'],
   dash: ['KeyX', 'KeyK'],
-  grab: ['KeyZ', 'KeyL', 'ShiftLeft'],
   pause: ['Escape', 'KeyP'],
   restart: ['KeyR'],
   status: ['KeyI'],
@@ -32,8 +30,8 @@ export const DEFAULT_BINDINGS = {
 
 // Gamepad buttons, in the browser's standard layout. Movement stays on the
 // left stick and d-pad; everything else can be remapped.
-export const PAD_ACTIONS = ['jump', 'dash', 'grab', 'pause', 'restart', 'status'];
-export const DEFAULT_PAD_BINDINGS = { jump: [0], dash: [2, 1], grab: [4, 5, 6, 7], pause: [9], restart: [8], status: [3] };
+export const PAD_ACTIONS = ['jump', 'dash', 'pause', 'restart', 'status'];
+export const DEFAULT_PAD_BINDINGS = { jump: [0], dash: [2, 1], pause: [9], restart: [8], status: [3] };
 const PAD_MOVE = [12, 13, 14, 15];
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'Left stick', 'Right stick', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home'];
 
@@ -54,12 +52,11 @@ export class Input {
     this.settings = settings;
     this.down = new Set();
     this.latched = new Set();
-    this.touch = { left: false, right: false, up: false, down: false, jump: false, dash: false, grab: false };
+    this.touch = { left: false, right: false, up: false, down: false, jump: false, dash: false };
     this.prevPad = {};
     this.padHeld = {};
     this.padAxes = { x: 0, y: 0 };
     this.gameActive = false;
-    this.grabToggled = false;
     this.lastDevice = 'keyboard';
     this.onAction = null;
     this.capture = null;
@@ -118,7 +115,6 @@ export class Input {
 
   press(action) {
     this.latched.add(action);
-    if (action === 'grab' && this.settings.grabMode === 'toggle') this.grabToggled = !this.grabToggled;
     if ((action === 'pause' || action === 'restart' || action === 'status') && this.onAction) this.onAction(action);
   }
 
@@ -174,7 +170,6 @@ export class Input {
 
   resetGameState() {
     this.latched.clear();
-    this.grabToggled = false;
   }
 
   // One physics step's worth of input.
@@ -183,7 +178,6 @@ export class Input {
     const right = this.held('right');
     const up = this.held('up');
     const down = this.held('down');
-    const grabHeld = this.settings.grabMode === 'toggle' ? this.grabToggled : this.held('grab');
     const snap = {
       moveX: (right ? 1 : 0) - (left ? 1 : 0),
       moveY: (down ? 1 : 0) - (up ? 1 : 0),
@@ -192,7 +186,6 @@ export class Input {
       jump: this.held('jump') || this.latched.has('jump'),
       jumpPressed: this.latched.has('jump'),
       dashPressed: this.latched.has('dash'),
-      grab: !!grabHeld,
     };
     this.latched.clear();
     return snap;

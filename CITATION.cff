@@ -7,7 +7,7 @@ type: software
 title: Fell Runner
 version: 0.4.0
 date-released: 2026-10-18
-abstract: A Celeste-style speedrunning platformer over three notorious Lake District fells, with real routes, seeded weather, wind physics, ghosts and full accessibility. Free to play in your browser.
+abstract: A speedrunning platformer, inspired by Celeste, over three notorious Lake District fells, with real routes, seeded weather, wind physics, ghosts and full accessibility. Free to play in your browser.
 authors:
   - given-names: Ryan
     family-names: McCrickerd

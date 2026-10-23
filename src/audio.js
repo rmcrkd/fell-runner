@@ -129,17 +129,12 @@ export class Audio {
         return this.tone({ freq: 300, to: 520, dur: 0.09, vol: 0.08 });
       case 'walljump':
         return this.tone({ freq: 360, to: 640, dur: 0.1, vol: 0.08 });
-      case 'super':
-      case 'hyper':
-        return this.tone({ freq: 260, to: 900, dur: 0.16, vol: 0.09, type: 'sawtooth' });
       case 'dash':
         return this.burst({ dur: 0.22, freq: 2400, vol: 0.5 });
       case 'land':
         return this.burst({ dur: 0.07, freq: 300, vol: 0.4, type: 'lowpass' });
       case 'grab':
         return this.burst({ dur: 0.05, freq: 900, vol: 0.25 });
-      case 'tired':
-        return this.tone({ freq: 220, to: 140, dur: 0.25, vol: 0.08, type: 'triangle' });
       case 'refill':
         return this.tone({ freq: 880, dur: 0.05, vol: 0.04, type: 'triangle' });
       case 'cake':
@@ -177,9 +172,8 @@ export class Audio {
 export const CAPTIONS = {
   dash: 'whoosh',
   died: 'ouch!',
-  cake: 'mint cake: dash and stamina refilled',
+  cake: 'mint cake: dash refilled',
   checkpoint: 'cairn reached',
-  tired: 'arms tiring',
   bounce: 'boing',
   crack: 'loose rock cracking',
   crumble: 'loose rock gives way',

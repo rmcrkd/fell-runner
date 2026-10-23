@@ -1,6 +1,6 @@
 import { Level } from '../src/level.js';
 
-export const NONE = Object.freeze({ moveX: 0, moveY: 0, jump: false, jumpPressed: false, dashPressed: false, grab: false });
+export const NONE = Object.freeze({ moveX: 0, moveY: 0, jump: false, jumpPressed: false, dashPressed: false });
 export const inp = (o = {}) => ({ ...NONE, ...o });
 
 // A small test map: flat ground, a 6-tile crag wall, a spike and some water.

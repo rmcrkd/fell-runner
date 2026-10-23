@@ -33,10 +33,8 @@ export function defaultSettings() {
     // Controls
     bindings: null,
     padBindings: null,
-    grabMode: 'hold',
     // Assist
     speed: 1,
-    infiniteStamina: false,
     dashMode: 'default',
     invincible: false,
     // Visuals
@@ -77,8 +75,9 @@ export function saveLastSetup(setup) {
 }
 
 // Records are kept per fell and per weather difficulty. Fells are keyed by
-// level.key, which changes whenever a map does, so old records retire rather
-// than being compared with runs on a different route. Assisted runs are kept
+// level.key, which changes whenever a map or the physics does, so old
+// records retire rather than being compared with runs on a different route
+// or under different rules. Assisted runs are kept
 // in their own table so they never displace unassisted bests, but still
 // count: they are real runs.
 const bucket = (difficultyId, assisted) => (assisted ? `${difficultyId}+assist` : difficultyId);

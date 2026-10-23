@@ -90,10 +90,9 @@ export const VIEWPORTS = [
 export function finishScripted(page) {
   return page.evaluate(async () => {
     const { levelById } = await import('./src/levels/index.js');
-    const { VESTS } = await import('./src/config.js');
     const { solve } = await import('./tools/solver.js');
     Object.assign(fellRunner.setup, { levelId: 'blencathra', difficultyId: 'none', vestId: 'ridgeline' });
-    const r = solve(levelById('blencathra'), { vest: VESTS[1], allowDash: true });
+    const r = solve(levelById('blencathra'), { allowDash: true });
     fellRunner.playScripted(r.inputs, { manualStepping: true });
     const result = fellRunner.advance(r.inputs.length + 5);
     fellRunner.resumeLoop();

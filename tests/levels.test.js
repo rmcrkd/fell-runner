@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { STEP, TILE, VESTS } from '../src/config.js';
+import { STEP, TILE } from '../src/config.js';
 import { LEVELS, LEVEL_DEFS } from '../src/levels/index.js';
 import { stitch } from '../src/levels/stitch.js';
 import { T } from '../src/level.js';
@@ -32,7 +32,7 @@ test('Blencathra teaches every move with signposts before its first hazard', () 
   const words = level.signs.map((s) => s.text);
   for (const s of level.signs) assert.ok(s.text, `signpost at column ${s.x / TILE} has words`);
   const before = (pattern) => level.signs.findIndex((s) => pattern.test(s.text));
-  for (const move of [/\{jump\}/, /kick/, /\{grab\}/, /[Ll]oose/, /\{dash\}/, /wind/, /\{down\} to crouch/]) assert.ok(before(move) >= 0, `a sign mentions ${move}`);
+  for (const move of [/\{jump\}/, /kick/, /\{up\} to climb/, /[Ll]oose/, /\{dash\}/, /wind/, /\{down\} to crouch/]) assert.ok(before(move) >= 0, `a sign mentions ${move}`);
   // The first stretch is safe: no sharp rocks, water or open drops
   const firstHazard = Math.min(
     ...[...level.def.map.split('\n').entries()].flatMap(([, row]) => [row.indexOf('^'), row.indexOf('~')].filter((i) => i >= 0)),
@@ -44,7 +44,7 @@ test('Blencathra teaches every move with signposts before its first hazard', () 
 test('sign words name actions the game can show controls for', () => {
   for (const level of LEVELS) {
     for (const s of level.signs) {
-      for (const [, action] of s.text.matchAll(/\{(\w+)\}/g)) assert.ok(['jump', 'dash', 'grab', 'up', 'down'].includes(action), `{${action}} on ${level.def.name}`);
+      for (const [, action] of s.text.matchAll(/\{(\w+)\}/g)) assert.ok(['jump', 'dash', 'up', 'down'].includes(action), `{${action}} on ${level.def.name}`);
     }
   }
 });
@@ -58,8 +58,8 @@ test('Helvellyn: a crouching runner can get through the Hole-in-the-Wall, not ju
   const floor = topOf(hole.col);
   const wallTop = topOf(stub);
   // Run in, crouch, crouch-jump, then dash sideways through the gap
-  const through = (vest, run, dashAt) => {
-    const p = new Player(level, { vest });
+  const through = (run, dashAt) => {
+    const p = new Player(level);
     p.spawn(hole.x, floor);
     for (let f = 0; f < run; f++) p.update(inp({ moveX: 1 }), STEP);
     p.update(inp({ moveX: 1, moveY: 1 }), STEP);
@@ -70,11 +70,9 @@ test('Helvellyn: a crouching runner can get through the Hole-in-the-Wall, not ju
     }
     return false;
   };
-  for (const vest of VESTS) {
-    let ok = false;
-    for (let run = 30; run < 80 && !ok; run++) for (let at = 4; at < 16 && !ok; at++) ok = through(vest, run, at);
-    assert.ok(ok, vest.name);
-  }
+  let ok = false;
+  for (let run = 30; run < 80 && !ok; run++) for (let at = 4; at < 16 && !ok; at++) ok = through(run, at);
+  assert.ok(ok);
 });
 
 test('stitch pairs each signpost with its words, and rejects a miscount', () => {
@@ -88,10 +86,11 @@ test('stitch pairs each signpost with its words, and rejects a miscount', () => 
   assert.throws(() => stitch([{ signs: ['one', 'two'], map: '.?.\n.?.\n###' }]), /two signposts in one column/);
 });
 
-test('each fell has a storage key that changes when its map does', async () => {
+test('each fell has a storage key that changes when its map or the physics does', async () => {
   const { hashString } = await import('../src/rng.js');
+  const { PHYS } = await import('../src/config.js');
   assert.equal(new Set(LEVELS.map((l) => l.key)).size, LEVELS.length);
-  for (const l of LEVELS) assert.equal(l.key, `${l.id}.${hashString(l.def.map).toString(36)}`);
+  for (const l of LEVELS) assert.equal(l.key, `${l.id}.${hashString(l.def.map + JSON.stringify(PHYS)).toString(36)}`);
 });
 
 test('levels are listed in order of difficulty', () => {

@@ -1,11 +1,13 @@
-import { PHYS as P } from './config.js';
+import { AIR_DRAG, PHYS as P } from './config.js';
 import { LOOSE_CRUMBLE, LOOSE_RESPAWN } from './level.js';
 
-// A Celeste-style platformer controller: integer positions with sub-pixel
-// remainders, coyote time, jump buffering, variable jump height, wall
-// slides, wall jumps, stamina-limited climbing, eight-way dashes, corner
-// correction, crouching, and super, hyper and ultra moves for players who go
-// looking for them.
+// The runner. Each axis is its own one-dimensional Newtonian system: the
+// runner's legs, arms and jumps, gravity, and the wind change velocity, and
+// nothing on one axis turns into speed on the other. Beyond the runner's own
+// movement only the wind acts, and only off walls: on a crag face, grip is
+// always on. Positions are whole pixels with sub-pixel remainders, and the
+// controls borrow Celeste's comforts: coyote time, jump buffering, variable
+// jump height, wall kicks, eight-way dashes, corner correction and crouching.
 
 export const ST = { NORMAL: 0, CLIMB: 1, DASH: 2, DEAD: 3 };
 
@@ -15,19 +17,17 @@ export const STAND_H = 11;
 const approach = (v, target, amount) => (v > target ? Math.max(v - amount, target) : Math.min(v + amount, target));
 const sign = (v) => (v > 0 ? 1 : v < 0 ? -1 : 0);
 
-export const NO_INPUT = Object.freeze({ moveX: 0, moveY: 0, jump: false, jumpPressed: false, dashPressed: false, grab: false });
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+export const NO_INPUT = Object.freeze({ moveX: 0, moveY: 0, jump: false, jumpPressed: false, dashPressed: false });
 
 export class Player {
-  constructor(level, { vest, assist = {} } = {}) {
+  constructor(level, { assist = {} } = {}) {
     this.level = level;
     this.w = 8;
     this.h = STAND_H;
-    this.vest = vest ?? { runMult: 1, accelMult: 1, staminaMult: 1, windMult: 1, dashes: 1 };
     this.assist = assist;
-    this.maxRun = P.maxRun * this.vest.runMult;
-    this.runAccel = P.runAccel * this.vest.accelMult;
-    this.maxStamina = P.climbMaxStamina * this.vest.staminaMult;
-    this.maxDashes = assist.dashMode === 'two' ? Math.max(2, this.vest.dashes) : this.vest.dashes;
+    this.maxDashes = assist.dashMode === 'two' ? 2 : 1;
     this.events = [];
     // Loose rock state, one entry per block: 0 intact, > 0 crumbling (seconds
     // left), < 0 fallen (seconds until it settles back). It lives here rather
@@ -57,21 +57,13 @@ export class Player {
     this.varJumpSpeed = 0;
     this.forceMoveX = 0;
     this.forceMoveXTimer = 0;
-    this.wallSlideTimer = P.wallSlideTime;
-    this.wallSlideDir = 0;
-    this.wallBoostTimer = 0;
-    this.wallBoostDir = 0;
     this.maxFall = P.maxFall;
-    this.stamina = this.maxStamina;
     this.dashes = this.maxDashes;
     this.dashCooldown = 0;
     this.dashRefillCooldown = 0;
     this.dashTimer = 0;
     this.dashDir = { x: 0, y: 0 };
-    this.dashOnGround = false;
-    this.dashAttackTimer = 0;
     this.climbNoMoveTimer = 0;
-    this.noWindTimer = 0;
     this.runDistance = 0;
     this.squash = 1;
     this.exposure = 1;
@@ -80,7 +72,7 @@ export class Player {
 
   // Plain copy of the movement state, used by tools to branch simulations.
   snapshot() {
-    const { level, vest, assist, events, touching, loose, ...state } = this;
+    const { level, assist, events, touching, loose, ...state } = this;
     return { ...state, dashDir: { ...this.dashDir }, loose: Float32Array.from(loose) };
   }
 
@@ -89,10 +81,6 @@ export class Player {
     Object.assign(this, rest);
     this.dashDir = { ...state.dashDir };
     this.loose.set(loose);
-  }
-
-  get tired() {
-    return !this.assist.infiniteStamina && this.stamina < P.climbTiredThreshold;
   }
 
   get canDash() {
@@ -133,30 +121,27 @@ export class Player {
   duckCorrect(dt) {
     for (let i = P.duckCorrectCheck; i > 0; i--) {
       for (const d of [1, -1]) {
-        if (this.canStand(i * d)) return this.moveH(d * P.duckCorrectSlide * dt, false);
+        if (this.canStand(i * d)) return this.moveH(d * P.duckCorrectSlide * dt, true);
       }
     }
   }
 
-  update(inp, dt, wind = 0, grip = 1) {
+  // `wind` is the wind speed in px/s, positive blowing east.
+  update(inp, dt, wind = 0) {
     this.events.length = 0;
     if (this.state === ST.DEAD) return;
 
     this.jumpBuffer = inp.jumpPressed ? P.jumpBufferTime : this.jumpBuffer - dt;
     this.dashBuffer = inp.dashPressed ? P.dashBufferTime : this.dashBuffer - dt;
     this.dashCooldown -= dt;
-    if (this.dashAttackTimer > 0) this.dashAttackTimer -= dt;
     this.dashRefillCooldown -= dt;
     if (this.varJumpTimer > 0) this.varJumpTimer -= dt;
     if (this.forceMoveXTimer > 0) this.forceMoveXTimer -= dt;
-    if (this.noWindTimer > 0) this.noWindTimer -= dt;
     this.squash = approach(this.squash, 1, dt * 4);
 
     this.onGround = this.state !== ST.DASH || this.dashDir.y >= 0 ? this.checkGround() : false;
     if (this.onGround) {
       this.jumpGrace = P.jumpGraceTime;
-      this.wallSlideTimer = P.wallSlideTime;
-      if (this.state !== ST.CLIMB || this.vy >= 0) this.stamina = this.maxStamina;
       if (this.dashRefillCooldown <= 0 && this.dashes < this.maxDashes) {
         this.dashes = this.maxDashes;
         this.events.push('refill');
@@ -168,20 +153,16 @@ export class Player {
     const moveX = this.forceMoveXTimer > 0 ? this.forceMoveX : inp.moveX;
     const moveY = inp.moveY;
 
-    if (this.state === ST.NORMAL) this.normalUpdate(inp, dt, moveX, moveY, grip);
+    // The wind where the runner stands: less in the valley and in the lee of rock
+    this.exposure = wind === 0 ? 1 : this.level.exposureAt(this.x, this.y, this.w, this.h, Math.sign(wind));
+    if (this.state === ST.NORMAL) this.normalUpdate(inp, dt, moveX, moveY, wind * this.exposure);
     else if (this.state === ST.CLIMB) this.climbUpdate(inp, dt, moveX, moveY);
     else if (this.state === ST.DASH) this.dashUpdate(inp, dt);
 
     const wasGround = this.onGround;
     const startX = this.x;
-    this.moveH(this.vx * dt, true);
+    this.moveH(this.vx * dt);
     this.moveV(this.vy * dt);
-
-    this.exposure = wind === 0 ? 1 : this.level.exposureAt(this.x, this.y, this.w, this.h, Math.sign(wind));
-    if (wind !== 0 && this.state === ST.NORMAL && this.noWindTimer <= 0) {
-      const drift = wind * this.exposure * this.vest.windMult * (this.checkGround() ? P.windGroundMult : 1);
-      this.moveH(drift * dt, false);
-    }
 
     const nowGround = this.checkGround();
     if (nowGround && !wasGround && this.state !== ST.CLIMB) {
@@ -195,10 +176,23 @@ export class Player {
     this.checkHazards();
   }
 
-  normalUpdate(inp, dt, moveX, moveY, grip) {
-    // Grab a crag face
-    if (inp.grab && !this.tired && !this.ducking && this.vy >= 0 && sign(this.vx) !== -this.facing) {
-      if (this.climbCheck(this.facing)) {
+  // The side of a crag face the runner is touching and not pushing away
+  // from, or 0.
+  gripSide(moveX) {
+    for (const d of [moveX || this.facing, -(moveX || this.facing)]) {
+      if (d !== -moveX && this.collide(d, 0)) return d;
+    }
+    return 0;
+  }
+
+  normalUpdate(inp, dt, moveX, moveY, wind) {
+    // Grip is always on: falling against a crag, or pressing up beside one
+    // on the ground, takes hold of it. A jump pressed as you get there kicks
+    // off instead.
+    if (!this.ducking && this.vy >= 0 && this.jumpBuffer <= 0 && (!this.onGround || moveY === -1)) {
+      const side = this.gripSide(moveX);
+      if (side) {
+        this.facing = side;
         this.enterClimb();
         return;
       }
@@ -221,63 +215,43 @@ export class Player {
 
     if (moveX !== 0) this.facing = moveX;
 
-    // Run, or slide to a stop when crouched
-    const mult = this.onGround ? 1 : P.airMult;
-    if (this.ducking && this.onGround) {
-      this.vx = approach(this.vx, 0, P.duckFriction * grip * dt);
-    } else if (Math.abs(this.vx) > this.maxRun && sign(this.vx) === moveX) {
-      this.vx = approach(this.vx, this.maxRun * moveX, P.runReduce * mult * dt);
+    // Sideways: the wind's force, then the runner's own
+    const air = AIR_DRAG * (wind - this.vx);
+    let push;
+    if (this.onGround) {
+      // Feet on the ground push (or brake) towards running speed, as hard as
+      // it takes up to their limit, wind or no wind
+      const target = this.ducking ? 0 : P.maxRun * moveX;
+      const limit = this.ducking ? P.duckFriction : Math.abs(this.vx) > P.maxRun && sign(this.vx) === moveX ? P.runReduce : P.runAccel;
+      push = clamp((target - this.vx) / dt - air, -limit, limit);
     } else {
-      let accel = this.runAccel * mult;
-      if (this.onGround && (moveX === 0 || sign(this.vx) === -moveX)) accel *= grip;
-      this.vx = approach(this.vx, this.maxRun * moveX, accel * dt);
+      // In the air the runner can only lean and swing their arms
+      push = P.airAccel * moveX;
     }
+    this.vx += (push + air) * dt;
 
-    // Wall boost: a neutral climb-jump refunds stamina if you then push away
-    if (this.wallBoostTimer > 0) {
-      this.wallBoostTimer -= dt;
-      if (moveX === this.wallBoostDir) {
-        this.vx = P.wallJumpHSpeed * moveX;
-        this.stamina += P.climbJumpCost;
-        this.wallBoostTimer = 0;
-      }
-    }
-
-    // Fall
+    // Down: gravity, up to a terminal speed, higher when tucked
     if (moveY === 1 && this.vy >= P.maxFall) {
       this.maxFall = approach(this.maxFall, P.fastMaxFall, P.fastMaxAccel * dt);
     } else {
       this.maxFall = approach(this.maxFall, P.maxFall, P.fastMaxAccel * dt);
     }
-
     if (!this.onGround) {
-      let max = this.maxFall;
-      this.wallSlideDir = 0;
-      if (moveX === this.facing && moveY !== 1 && this.vy >= 0 && this.wallSlideTimer > 0 && this.collide(this.facing, 0)) {
-        this.wallSlideDir = this.facing;
-        max = P.maxFall + (P.wallSlideStartMax - P.maxFall) * (this.wallSlideTimer / P.wallSlideTime);
-        this.wallSlideTimer = Math.max(0, this.wallSlideTimer - dt);
-      }
       const gravMult = Math.abs(this.vy) < P.halfGravThreshold && inp.jump ? 0.5 : 1;
-      this.vy = approach(this.vy, max, P.gravity * gravMult * dt);
+      this.vy = approach(this.vy, this.maxFall, P.gravity * gravMult * dt);
     }
 
-    // Variable jump height
+    // Variable jump height: holding jump holds the jump's speed
     if (this.varJumpTimer > 0) {
       if (inp.jump) this.vy = Math.min(this.vy, this.varJumpSpeed);
       else this.varJumpTimer = 0;
     }
 
-    // Jump
+    // Jump, or kick off a crag face within reach
     if (this.jumpBuffer > 0) {
       if (this.jumpGrace > 0) this.jump(moveX);
-      else if (this.wallJumpCheck(1)) {
-        if (this.facing === 1 && inp.grab && !this.tired) this.climbJump(moveX);
-        else this.wallJump(-1, moveX);
-      } else if (this.wallJumpCheck(-1)) {
-        if (this.facing === -1 && inp.grab && !this.tired) this.climbJump(moveX);
-        else this.wallJump(1, moveX);
-      }
+      else if (this.wallJumpCheck(1)) this.wallJump(-1, moveX);
+      else if (this.wallJumpCheck(-1)) this.wallJump(1, moveX);
     }
   }
 
@@ -285,7 +259,6 @@ export class Player {
     this.jumpBuffer = 0;
     this.jumpGrace = 0;
     this.varJumpTimer = P.varJumpTime;
-    this.wallSlideTimer = P.wallSlideTime;
     this.vx += P.jumpHBoost * moveX;
     this.vy = P.jumpSpeed;
     this.varJumpSpeed = this.vy;
@@ -298,8 +271,6 @@ export class Player {
     this.jumpBuffer = 0;
     this.jumpGrace = 0;
     this.varJumpTimer = P.varJumpTime;
-    this.wallSlideTimer = P.wallSlideTime;
-    this.wallBoostTimer = 0;
     if (moveX !== 0) {
       this.forceMoveX = dir;
       this.forceMoveXTimer = P.wallJumpForceTime;
@@ -312,51 +283,8 @@ export class Player {
     this.events.push('walljump');
   }
 
-  climbJump(moveX) {
-    if (!this.onGround && !this.assist.infiniteStamina) this.stamina -= P.climbJumpCost;
-    this.jump(moveX);
-    if (moveX === 0) {
-      this.wallBoostDir = -this.facing;
-      this.wallBoostTimer = P.wallBoostTime;
-    }
-  }
-
-  // A super jump made from a crouch is a hyper: longer and lower.
-  superJump() {
-    const hyper = this.ducking || this.dashDir.y > 0;
-    this.stand();
-    this.jumpBuffer = 0;
-    this.jumpGrace = 0;
-    this.varJumpTimer = P.varJumpTime;
-    this.vx = P.superJumpH * this.facing;
-    this.vy = P.jumpSpeed;
-    if (hyper) {
-      this.vx *= P.hyperXMult;
-      this.vy *= P.hyperYMult;
-    }
-    this.varJumpSpeed = this.vy;
-    this.state = ST.NORMAL;
-    this.squash = 1.3;
-    this.events.push(hyper ? 'hyper' : 'super');
-  }
-
-  superWallJump(dir) {
-    this.jumpBuffer = 0;
-    this.varJumpTimer = P.superWallJumpVarTime;
-    this.vx = P.superWallJumpH * dir;
-    this.vy = P.superWallJumpSpeed;
-    this.varJumpSpeed = this.vy;
-    this.facing = dir;
-    this.state = ST.NORMAL;
-    this.events.push('walljump');
-  }
-
   wallJumpCheck(dir) {
     return this.collide(dir * P.wallJumpCheckDist, 0);
-  }
-
-  climbCheck(dir) {
-    return this.collide(dir, 0) || this.collide(dir * 2, 0);
   }
 
   // True when the point just in front of the top of the runner is clear,
@@ -370,27 +298,25 @@ export class Player {
     this.state = ST.CLIMB;
     this.vx = 0;
     this.vy *= P.climbGrabYMult;
-    this.wallSlideTimer = P.wallSlideTime;
     this.climbNoMoveTimer = P.climbNoMoveTime;
-    this.wallBoostTimer = 0;
-    for (let i = 0; i < 2 && !this.collide(this.facing, 0); i++) this.x += this.facing;
     this.events.push('grab');
   }
 
   climbUpdate(inp, dt, moveX, moveY) {
     this.climbNoMoveTimer -= dt;
 
+    // Jumping always kicks off, away from the face
     if (this.jumpBuffer > 0) {
       this.state = ST.NORMAL;
-      if (moveX === -this.facing) this.wallJump(-this.facing, moveX);
-      else this.climbJump(moveX);
+      this.wallJump(-this.facing, moveX);
       return;
     }
     if (this.dashBuffer > 0 && this.canDash) {
       this.startDash(inp);
       return;
     }
-    if (!inp.grab) {
+    // Pushing away lets go, and so does standing on the ground
+    if (moveX === -this.facing || (this.onGround && moveY !== -1)) {
       this.state = ST.NORMAL;
       return;
     }
@@ -423,35 +349,28 @@ export class Player {
     }
     if (trySlip && this.slipCheck()) target = P.climbSlipSpeed;
     this.vy = approach(this.vy, target, P.climbAccel * dt);
-
-    if (!this.assist.infiniteStamina) {
-      if (moveY === -1 && target < 0) this.stamina -= P.climbUpCost * dt;
-      else if (moveY !== 1) this.stamina -= P.climbStillCost * dt;
-    }
-    if (this.stamina <= 0) {
-      this.state = ST.NORMAL;
-      this.events.push('tired');
-    }
   }
 
   climbHop() {
     this.state = ST.NORMAL;
     this.vx = this.facing * P.climbHopX;
     this.vy = Math.min(this.vy, P.climbHopY);
-    this.forceMoveX = 0;
+    // The runner pushes on over the top, against any wind, while their feet
+    // clear the lip
+    this.forceMoveX = this.facing;
     this.forceMoveXTimer = P.climbHopForceTime;
-    // As in Celeste, the wind can't blow you back off the lip mid-hop.
-    this.noWindTimer = P.climbHopNoWindTime;
     this.events.push('hop');
   }
 
+  // A dash kicks the runner to dash speed in one of eight directions. For
+  // `dashTime` they hold that speed against gravity and wind, then the
+  // forces take over again.
   startDash(inp) {
     this.dashBuffer = 0;
     if (this.assist.dashMode !== 'infinite') this.dashes--;
     this.dashCooldown = P.dashCooldown;
     this.dashRefillCooldown = P.dashRefillCooldown;
     this.varJumpTimer = 0;
-    this.wallBoostTimer = 0;
 
     let dx = inp.moveX;
     let dy = inp.moveY;
@@ -463,18 +382,8 @@ export class Player {
     const before = this.vx;
     this.vx = this.dashDir.x * P.dashSpeed;
     this.vy = this.dashDir.y * P.dashSpeed;
-    this.dashOnGround = false;
-    this.dashAttackTimer = P.dashAttackTime;
-    if (this.onGround && this.dashDir.x !== 0 && this.dashDir.y > 0) {
-      // Down-diagonal dash along the ground becomes a fast, crouched slide
-      this.vy = 0;
-      this.vx = sign(this.dashDir.x) * P.dashSpeed * Math.SQRT1_2 * P.groundDashSpeedMult;
-      this.dashOnGround = true;
-      this.duck();
-    } else if (this.dashDir.y < 0) {
-      this.stand();
-    }
     if (sign(before) === sign(this.vx) && Math.abs(before) > Math.abs(this.vx)) this.vx = before;
+    if (this.dashDir.y < 0) this.stand();
     this.dashTimer = P.dashTime;
     this.state = ST.DASH;
     this.events.push('dash');
@@ -482,29 +391,24 @@ export class Player {
 
   dashUpdate(inp, dt) {
     this.dashTimer -= dt;
+    // A jump ends the dash: off the ground, or off a crag face within reach
     if (this.jumpBuffer > 0) {
-      if (this.dashDir.y >= 0 && this.dashDir.x !== 0 && (this.onGround || this.jumpGrace > 0) && this.canStand()) {
-        this.superJump();
-        return;
+      const wall = this.wallJumpCheck(1) ? -1 : this.wallJumpCheck(-1) ? 1 : 0;
+      if (this.onGround || this.jumpGrace > 0) {
+        this.state = ST.NORMAL;
+        return this.jump(inp.moveX);
       }
-      if (this.dashDir.x === 0 && this.dashDir.y < 0) {
-        if (this.wallJumpCheck(1)) return this.superWallJump(-1);
-        if (this.wallJumpCheck(-1)) return this.superWallJump(1);
-      }
-    }
-    if (this.dashTimer <= 0) {
-      this.state = ST.NORMAL;
-      if (this.dashDir.y <= 0) {
-        const endX = this.dashDir.x * P.endDashSpeed;
-        if (Math.abs(this.vx) > Math.abs(endX) && sign(this.vx) === sign(endX)) this.vx = sign(this.vx) * Math.max(Math.abs(endX), Math.abs(this.vx) * 0.7);
-        else this.vx = endX;
-        this.vy = this.dashDir.y * P.endDashSpeed;
-        if (this.vy < 0) this.vy *= P.endDashUpMult;
+      if (wall) {
+        this.state = ST.NORMAL;
+        return this.wallJump(wall, inp.moveX);
       }
     }
+    if (this.dashTimer <= 0) this.state = ST.NORMAL;
   }
 
-  moveH(amount, isOwnSpeed) {
+  // Moves sideways, stopping at rock. `nudge` is a shift of position only,
+  // which leaves the speed alone.
+  moveH(amount, nudge = false) {
     this.rx += amount;
     let move = Math.round(this.rx);
     if (move === 0) return;
@@ -516,7 +420,7 @@ export class Player {
         move -= s;
         continue;
       }
-      if (isOwnSpeed && this.state === ST.DASH && this.dashDir.y === 0) {
+      if (!nudge && this.state === ST.DASH && this.dashDir.y === 0) {
         // Dash corner correction: slip past a corner a few pixels away
         let corrected = false;
         for (let i = 1; i <= P.dashCornerCorrection && !corrected; i++) {
@@ -533,7 +437,7 @@ export class Player {
         if (corrected) continue;
       }
       this.rx = 0;
-      if (isOwnSpeed) this.vx = 0;
+      if (!nudge) this.vx = 0;
       return;
     }
   }
@@ -571,15 +475,6 @@ export class Player {
         this.varJumpTimer = 0;
       }
       this.ry = 0;
-      if (s > 0 && this.dashDir.y > 0 && !this.dashOnGround && (this.state === ST.DASH || this.dashAttackTimer > 0)) {
-        // Ultra: a down-diagonal dash that lands, during it or just after,
-        // crouches you and gains speed
-        if (this.dashDir.x !== 0) {
-          this.vx *= P.groundDashSpeedMult;
-          this.duck();
-        }
-        this.dashOnGround = true;
-      }
       this.vy = 0;
       return;
     }
@@ -654,10 +549,8 @@ export class Player {
   }
 
   refill() {
-    const needed = this.dashes < this.maxDashes || this.stamina < this.maxStamina;
-    if (!needed) return false;
+    if (this.dashes >= this.maxDashes) return false;
     this.dashes = this.maxDashes;
-    this.stamina = this.maxStamina;
     return true;
   }
 }

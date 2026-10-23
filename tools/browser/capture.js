@@ -37,7 +37,7 @@ function route({ levelId, difficultyId, seed, vestId }, place, after = 0) {
   const vest = byId(VESTS, vestId);
   const difficulty = byId(DIFFICULTIES, difficultyId);
   const weather = createWeather(seed, difficulty, level.id);
-  const { solved, inputs } = solve(level, { vest, wind: weather.windAt, grip: weather.grip, allowDash: true, fastest: true });
+  const { solved, inputs } = solve(level, { wind: weather.windAt, allowDash: true, fastest: true });
   if (!solved) throw new Error(`no route on ${levelId}`);
   const target = level.places.find((p) => p.name === place);
   const run = new Run({ level, vest, difficulty, seed });

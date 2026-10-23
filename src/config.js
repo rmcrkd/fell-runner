@@ -22,8 +22,8 @@ export const PHYS = {
   // resistance balances that push at running speed (see AIR_DRAG)
   airAccel: 650,
 
-  // Falling: gravity until air resistance balances it at `maxFall`, or at
-  // `fastMaxFall` when tucked (holding down)
+  // Falling: gravity, up to a terminal speed of `maxFall`, or `fastMaxFall`
+  // when tucked (holding down)
   gravity: 900,
   halfGravThreshold: 40,
   maxFall: 160,
@@ -136,7 +136,7 @@ export const DIFFICULTIES = [
     name: 'Extreme',
     blurb: 'Named-storm weather. Gales, driving rain or snow and thick clag. Nobody should be up there for real.',
     windBase: [22, 40],
-    gust: [24, 40],
+    gust: [30, 50],
     gustEvery: [2.6, 6],
     precip: [0.55, 1],
     fog: [0.3, 0.6],

@@ -230,8 +230,7 @@ export class Player {
     }
     this.vx += (push + air) * dt;
 
-    // Down: gravity, until air resistance balances it at the most a runner
-    // can fall, more when tucked
+    // Down: gravity, up to a terminal speed, higher when tucked
     if (moveY === 1 && this.vy >= P.maxFall) {
       this.maxFall = approach(this.maxFall, P.fastMaxFall, P.fastMaxAccel * dt);
     } else {
@@ -356,7 +355,9 @@ export class Player {
     this.state = ST.NORMAL;
     this.vx = this.facing * P.climbHopX;
     this.vy = Math.min(this.vy, P.climbHopY);
-    this.forceMoveX = 0;
+    // The runner pushes on over the top, against any wind, while their feet
+    // clear the lip
+    this.forceMoveX = this.facing;
     this.forceMoveXTimer = P.climbHopForceTime;
     this.events.push('hop');
   }

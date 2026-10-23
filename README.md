@@ -46,7 +46,7 @@ Race from the valley floor to the summit. A good run takes about a minute; your 
 <table>
   <tr>
     <td><img src="docs/blencathra.png" alt="Blencathra: crossing the rock teeth of Sharp Edge in rain, over gullies of shattered rock, with a slab of loose slate ahead"></td>
-    <td><img src="docs/helvellyn.png" alt="Helvellyn: leaping along Striding Edge in heavy rain and a strong westerly wind towards a bridge of loose slate"></td>
+    <td><img src="docs/helvellyn.png" alt="Helvellyn: leaping along Striding Edge in heavy rain and a westerly breeze, with a gust on its way and a mint cake in mid-air, towards a bridge of loose slate"></td>
   </tr>
   <tr>
     <td><img src="docs/scafell.png" alt="Scafell Pike: jumping between snow-capped blocks in the summit boulder field, with a mint cake in mid-air"></td>

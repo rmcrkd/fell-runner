@@ -133,6 +133,18 @@ test('on a crag, the runner climbs slowly, slides down, lets go by pushing away,
   }
 });
 
+test('climbing up a crag carries the runner over the top, even into a headwind', () => {
+  for (const wind of [0, -30, -WIND_CAP]) {
+    const p = make();
+    p.x = 27 * 8 - 8;
+    p.y -= 24;
+    p.onGround = false;
+    let f = 0;
+    while (!(p.onGround && p.y + p.h <= 7 * 8) && f++ < 120) p.update(inp({ moveY: -1 }), STEP, wind);
+    assert.ok(f < 120, `stuck below the top in a wind of ${wind}`);
+  }
+});
+
 test('dash moves fast and is used up until landing', () => {
   const p = make();
   const x0 = p.x;

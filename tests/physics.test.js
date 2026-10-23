@@ -1,15 +1,24 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PHYS, STEP, VESTS, byId } from '../src/config.js';
+import { AIR_DRAG, PHYS, STEP, WIND_CAP } from '../src/config.js';
 import { EXPOSURE_VALLEY, LOOSE_CRUMBLE, LOOSE_RESPAWN } from '../src/level.js';
 import { Player, ST } from '../src/player.js';
 import { inp, testLevel } from './helpers.js';
 
 const level = testLevel();
-const ridgeline = byId(VESTS, 'ridgeline');
 
 function make(opts = {}) {
-  return new Player(level, { vest: ridgeline, ...opts });
+  return new Player(level, opts);
+}
+
+// A runner high in open air, taking the full force of the wind, with a
+// long way to fall
+function aloft(opts) {
+  const p = make(opts);
+  p.x = 40;
+  p.y = -400;
+  p.onGround = false;
+  return p;
 }
 
 function jumpHeight(holdFrames) {
@@ -33,7 +42,7 @@ test('a full jump clears three tiles, a tap is much lower', () => {
 test('running reaches max speed quickly', () => {
   const p = make();
   for (let f = 0; f < 10; f++) p.update(inp({ moveX: 1 }), STEP);
-  assert.equal(p.vx, PHYS.maxRun);
+  assert.ok(Math.abs(p.vx - PHYS.maxRun) < 1e-9, `${p.vx}`);
 });
 
 test('coyote time: you can still jump just after leaving a ledge', () => {
@@ -46,7 +55,7 @@ P........F
 ###......#
 ###......#
 `);
-  const p = new Player(ledge, { vest: ridgeline });
+  const p = new Player(ledge);
   let f = 0;
   while (p.checkGround() && f++ < 100) p.update(inp({ moveX: 1 }), STEP);
   // Now just off the edge: one more frame of falling, then jump
@@ -80,35 +89,48 @@ test('wall jump pushes away from the crag', () => {
   assert.ok(p.vy < 0);
 });
 
-test('climbing drains stamina and eventually lets go', () => {
+test('grip is always on: a runner falling against a crag hangs on as long as they like', () => {
   const p = make();
   p.x = 27 * 8 - 8;
-  p.facing = 1;
-  p.update(inp({ grab: true }), STEP);
+  p.y -= 40;
+  p.onGround = false;
+  for (let f = 0; f < 60 * 30; f++) p.update(inp(), STEP);
   assert.equal(p.state, ST.CLIMB);
-  for (let f = 0; f < 600 && p.state === ST.CLIMB; f++) p.update(inp({ grab: true, moveY: 1 }), STEP);
-  // Climbing down to the ground keeps stamina; now hang in place
-  const q = make();
-  q.x = 27 * 8 - 8;
-  q.y -= 24;
-  q.facing = 1;
-  q.update(inp({ grab: true }), STEP);
-  let frames = 0;
-  while (q.state === ST.CLIMB && frames < 2000) {
-    q.update(inp({ grab: true }), STEP);
-    frames++;
-  }
-  assert.ok(q.state !== ST.CLIMB, 'let go when tired');
-  assert.ok(frames > 60 * 8, `held on for ${(frames / 60).toFixed(1)}s`);
+  assert.equal(p.facing, 1);
 });
 
-test('infinite stamina assist never tires', () => {
-  const p = make({ assist: { infiniteStamina: true } });
-  p.x = 27 * 8 - 8;
-  p.y -= 24;
-  p.facing = 1;
-  for (let f = 0; f < 60 * 30; f++) p.update(inp({ grab: true }), STEP);
-  assert.equal(p.state, ST.CLIMB);
+test('on a crag, the runner climbs slowly, slides down, lets go by pushing away, and always jumps away', () => {
+  const hang = () => {
+    const p = make();
+    p.x = 27 * 8 - 8;
+    p.y -= 24;
+    p.update(inp({ moveX: 1, moveY: -1 }), STEP);
+    assert.equal(p.state, ST.CLIMB, 'pressing up beside a crag takes hold');
+    return p;
+  };
+  const up = hang();
+  const y0 = up.y;
+  for (let f = 0; f < 30; f++) up.update(inp({ moveY: -1 }), STEP);
+  assert.equal(up.state, ST.CLIMB);
+  assert.ok(y0 - up.y > 15 && y0 - up.y <= -PHYS.climbUpSpeed / 2, `climbed ${y0 - up.y}px in half a second`);
+
+  const down = hang();
+  down.update(inp({ moveY: 1 }), STEP);
+  for (let f = 0; f < 10; f++) down.update(inp({ moveY: 1 }), STEP);
+  assert.ok(down.vy > 0, 'slides down');
+
+  const off = hang();
+  off.update(inp({ moveX: -1 }), STEP);
+  assert.equal(off.state, ST.NORMAL);
+  for (let f = 0; f < 10; f++) off.update(inp({ moveX: -1 }), STEP);
+  assert.ok(off.x < 27 * 8 - 8, 'moved away from the crag');
+
+  for (const moveX of [1, 0, -1]) {
+    const kick = hang();
+    kick.update(inp({ moveX, jump: true, jumpPressed: true }), STEP);
+    assert.equal(kick.vx, -PHYS.wallJumpHSpeed, `kicked away, holding ${moveX}`);
+    assert.ok(kick.vy < 0);
+  }
 });
 
 test('dash moves fast and is used up until landing', () => {
@@ -129,9 +151,9 @@ test('an up-dash spends the dash; landing refills it', () => {
   assert.equal(p.dashes, 1);
 });
 
-test('mountain marathon vest carries two dashes', () => {
-  const p = new Player(level, { vest: byId(VESTS, 'mountain') });
-  assert.equal(p.maxDashes, 2);
+test('one dash, or two with the assist', () => {
+  assert.equal(make().maxDashes, 1);
+  assert.equal(make({ assist: { dashMode: 'two' } }).maxDashes, 2);
 });
 
 test('holding down crouches: half height, feet planted, sliding to a stop', () => {
@@ -148,7 +170,7 @@ test('holding down crouches: half height, feet planted, sliding to a stop', () =
   assert.equal(p.y + p.h, feet);
 });
 
-test('a crouched runner stays down under a low roof, and cannot grab', () => {
+test('a crouched runner stays down under a low roof, and does not cling', () => {
   const lvl = testLevel(`
 ..........
 ..........
@@ -156,11 +178,11 @@ test('a crouched runner stays down under a low roof, and cannot grab', () => {
 P........F
 ##########
 `);
-  const p = new Player(lvl, { vest: ridgeline });
+  const p = new Player(lvl);
   p.x = 3 * 8;
   p.update(inp({ moveY: 1 }), STEP);
   p.x = 6 * 8;
-  for (let f = 0; f < 10; f++) p.update(inp({ moveX: 1, grab: true }), STEP);
+  for (let f = 0; f < 10; f++) p.update(inp({ moveX: 1, moveY: -1 }), STEP);
   assert.ok(p.ducking, 'no headroom to stand');
   assert.notEqual(p.state, ST.CLIMB);
   assert.ok(!lvl.solidAt(p.x, p.y, p.w, p.h), 'fits under the roof');
@@ -174,7 +196,7 @@ test('stuck crouching just under the edge of a roof, you edge out from under it'
 P........F
 ##########
 `);
-  const p = new Player(lvl, { vest: ridgeline });
+  const p = new Player(lvl);
   p.update(inp({ moveY: 1 }), STEP);
   // Overlapping the roof by 3px: within reach of headroom
   p.x = 5 * 8 - 5;
@@ -183,53 +205,47 @@ P........F
   assert.ok(p.x <= 5 * 8 - 8, `stood up at x ${p.x}`);
 });
 
-test('a crouched super is a hyper; a down-diagonal dash that lands is an ultra', () => {
-  // Crouch, then dash sideways and jump: long and low
-  const super_ = make();
-  super_.update(inp({ moveX: 1, dashPressed: true }), STEP);
-  super_.update(inp({ moveX: 1, jump: true, jumpPressed: true }), STEP);
-  const hyper = make();
-  hyper.update(inp({ moveY: 1 }), STEP);
-  hyper.update(inp({ moveX: 1, dashPressed: true }), STEP);
-  assert.ok(hyper.ducking, 'a sideways dash from a crouch stays low');
-  hyper.update(inp({ moveX: 1, jump: true, jumpPressed: true }), STEP);
-  assert.ok(!hyper.ducking);
-  assert.ok(hyper.vx > super_.vx && hyper.vy > super_.vy, `hyper ${hyper.vx},${hyper.vy} vs super ${super_.vx},${super_.vy}`);
-
-  // From the air, a down-diagonal dash crouches you and gains speed as it lands
-  const ultra = make();
-  ultra.x = 40;
-  ultra.y -= 12;
-  ultra.update(inp({ moveX: 1, moveY: 1, dashPressed: true }), STEP);
-  const before = ultra.vx;
-  for (let f = 0; f < 8 && !ultra.dashOnGround; f++) ultra.update(inp({ moveX: 1, moveY: 1 }), STEP);
-  assert.ok(ultra.ducking);
-  assert.ok(Math.abs(ultra.vx - before * PHYS.groundDashSpeedMult) < 1e-9, `${before} became ${ultra.vx}`);
-
-  // Landing just after the dash has ended still counts, once
-  const late = make();
-  late.x = 40;
-  late.y -= 40;
-  late.update(inp({ moveX: 1, moveY: 1, dashPressed: true }), STEP);
-  let landing = null;
-  for (let f = 0; f < 30 && !late.ducking; f++) {
-    landing = late.vx;
-    late.update(inp({ moveX: 1, moveY: 1 }), STEP);
+test('no tech turns speed on one axis into speed on the other', () => {
+  // A jump out of a ground dash keeps the dash's sideways speed, and the
+  // jump is an ordinary one, crouched or not
+  for (const crouch of [false, true]) {
+    const p = make();
+    if (crouch) p.update(inp({ moveY: 1 }), STEP);
+    p.update(inp({ moveX: 1, dashPressed: true }), STEP);
+    p.update(inp({ moveX: 1, jump: true, jumpPressed: true }), STEP);
+    assert.ok(p.vx <= PHYS.dashSpeed + PHYS.jumpHBoost, `vx ${p.vx}`);
+    assert.equal(p.vy, PHYS.jumpSpeed);
   }
-  assert.equal(late.state, ST.NORMAL, 'the dash ended before landing');
-  assert.ok(late.ducking && late.vx > landing, `${landing} became ${late.vx}`);
-  const after = late.vx;
-  late.update(inp({ moveX: 1, moveY: 1 }), STEP);
-  assert.ok(late.vx < after, 'only once');
+  // A down-diagonal dash that lands just stops falling
+  const q = make();
+  q.x = 40;
+  q.y -= 12;
+  q.update(inp({ moveX: 1, moveY: 1, dashPressed: true }), STEP);
+  let most = 0;
+  for (let f = 0; f < 20; f++) {
+    q.update(inp({ moveX: 1, moveY: 1 }), STEP);
+    most = Math.max(most, q.vx);
+  }
+  assert.ok(q.onGround);
+  assert.ok(most <= PHYS.dashSpeed * Math.SQRT1_2 + 1e-9, `vx reached ${most}`);
+  // An up-dash beside a crag, then a jump, is an ordinary wall kick
+  const r = make();
+  r.x = 27 * 8 - 8 - 2;
+  r.y -= 30;
+  r.jumpGrace = 0;
+  r.update(inp({ moveY: -1, dashPressed: true }), STEP);
+  r.update(inp({ jump: true, jumpPressed: true }), STEP);
+  assert.equal(r.vx, -PHYS.wallJumpHSpeed);
+  assert.equal(r.vy, PHYS.jumpSpeed);
 });
 
-test('a crouch-jump stands up on the way down, in time to grab a crag', () => {
+test('a crouch-jump stands up on the way down, in time to cling to a crag', () => {
   const p = make();
   p.x = 27 * 8 - 8 - 24;
   p.update(inp({ moveY: 1 }), STEP);
   let grabbed = -1;
   for (let f = 0; f < 60 && grabbed < 0; f++) {
-    p.update(inp({ moveX: 1, jump: true, jumpPressed: f === 0, grab: true }), STEP);
+    p.update(inp({ moveX: 1, jump: true, jumpPressed: f === 0 }), STEP);
     if (f > 0 && p.vy > 0) assert.ok(!p.ducking || p.onGround, 'stands once falling');
     if (p.state === ST.CLIMB) grabbed = f;
   }
@@ -262,7 +278,7 @@ P.........F
 ###...####
 ##########
 `);
-  const p = new Player(lvl, { vest: ridgeline });
+  const p = new Player(lvl);
   // Crouched in the pit the rock fell into
   p.loose.fill(-STEP);
   p.x = 3 * 8 + 4;
@@ -274,29 +290,70 @@ P.........F
   assert.ok(!p.ducking, 'room to stand up');
 });
 
-test('wind pushes the runner, more in the air, less with a heavier vest', () => {
-  const drift = (vest, air) => {
-    const p = new Player(level, { vest: byId(VESTS, vest) });
-    p.x = 40;
-    if (air) p.y -= 60;
-    const x0 = p.x;
-    for (let f = 0; f < 20; f++) p.update(inp(), STEP, 40);
-    return p.x - x0;
-  };
-  assert.ok(drift('ridgeline', false) > 0);
-  assert.ok(drift('ridgeline', true) > drift('ridgeline', false));
-  assert.ok(drift('featherweight', true) > drift('mountain', true));
+test('in still air, drag balances the runner\'s push at running speed', () => {
+  const p = aloft();
+  for (let f = 0; f < 60; f++) p.update(inp({ moveX: 1 }), STEP);
+  assert.ok(Math.abs(p.vx - PHYS.maxRun) < 0.5, `vx ${p.vx}`);
+  assert.equal(AIR_DRAG * PHYS.maxRun, PHYS.airAccel);
 });
 
-test('wet rock (low grip) makes you slide further when stopping', () => {
-  const slide = (grip) => {
-    const p = make();
-    for (let f = 0; f < 20; f++) p.update(inp({ moveX: 1 }), STEP, 0, grip);
-    const x0 = p.x;
-    for (let f = 0; f < 30; f++) p.update(inp(), STEP, 0, grip);
-    return p.x - x0;
-  };
-  assert.ok(slide(0.55) > slide(1));
+test('the strongest wind holds still a runner pushing into it in the air', () => {
+  // Pushing east into the strongest westward wind, from a standstill: still
+  const p = aloft();
+  const x0 = p.x;
+  for (let f = 0; f < 30; f++) {
+    p.update(inp({ moveX: 1 }), STEP, -WIND_CAP);
+    assert.equal(p.vx, 0);
+  }
+  assert.equal(p.x, x0);
+  // Taking off at running speed into it, the wind soon stops them
+  const q = aloft();
+  q.vx = PHYS.maxRun;
+  for (let f = 0; f < 40; f++) q.update(inp({ moveX: 1 }), STEP, -WIND_CAP);
+  assert.ok(Math.abs(q.vx) < 1, `vx ${q.vx}`);
+  // A lesser wind lets them make headway; letting go, they're blown along
+  const r = aloft();
+  for (let f = 0; f < 30; f++) r.update(inp({ moveX: 1 }), STEP, -WIND_CAP / 2);
+  assert.ok(r.vx > 0);
+  const s = aloft();
+  for (let f = 0; f < 30; f++) s.update(inp(), STEP, -WIND_CAP / 2);
+  assert.ok(s.vx < 0);
+});
+
+test('wind is a force: it builds speed over time, sideways only', () => {
+  const calm = aloft();
+  const windy = aloft();
+  windy.update(inp(), STEP, WIND_CAP);
+  assert.ok(windy.vx > 0 && windy.vx < WIND_CAP / 2, `one step of wind: ${windy.vx}`);
+  calm.update(inp(), STEP);
+  for (let f = 0; f < 30; f++) {
+    calm.update(inp(), STEP);
+    windy.update(inp(), STEP, WIND_CAP);
+    assert.equal(windy.vy, calm.vy, 'falls exactly as in still air');
+  }
+});
+
+test('on the ground, feet make headway even into the strongest wind', () => {
+  const p = make();
+  p.x = 40;
+  for (let f = 0; f < 60; f++) p.update(inp({ moveX: 1 }), STEP, -WIND_CAP);
+  assert.ok(p.vx > PHYS.maxRun / 3, `vx ${p.vx}`);
+  // And a runner standing still stays put
+  const q = make();
+  q.x = 40;
+  for (let f = 0; f < 60; f++) q.update(inp(), STEP, -WIND_CAP);
+  assert.equal(q.x, 40);
+});
+
+test('wind does not act on a runner clinging to a crag', () => {
+  const p = make();
+  p.x = 27 * 8 - 8;
+  p.y -= 40;
+  p.onGround = false;
+  p.update(inp(), STEP);
+  for (let f = 0; f < 60; f++) p.update(inp(), STEP, -WIND_CAP);
+  assert.equal(p.state, ST.CLIMB);
+  assert.equal(p.vx, 0);
 });
 
 test('sharp rocks and tarns are deadly; invincibility bounces instead', () => {
@@ -308,12 +365,12 @@ P........F
 ##########
 `;
   const deadly = testLevel(map);
-  const p = new Player(deadly, { vest: ridgeline });
+  const p = new Player(deadly);
   for (let f = 0; f < 120 && p.state !== ST.DEAD; f++) p.update(inp({ moveX: 1 }), STEP);
   assert.equal(p.state, ST.DEAD);
   assert.equal(p.deathCause, 'spike');
 
-  const q = new Player(deadly, { vest: ridgeline, assist: { invincible: true } });
+  const q = new Player(deadly, { assist: { invincible: true } });
   for (let f = 0; f < 120; f++) q.update(inp({ moveX: 1 }), STEP);
   assert.notEqual(q.state, ST.DEAD);
 });
@@ -322,7 +379,8 @@ test('falling off the bottom of the map is fatal', () => {
   const p = make();
   p.x = 40 * 8;
   p.y = 10 * 8;
-  for (let f = 0; f < 200 && p.state !== ST.DEAD; f++) p.update(inp(), STEP);
+  // Grip is always on, so it takes sliding down the crag beside the drop
+  for (let f = 0; f < 200 && p.state !== ST.DEAD; f++) p.update(inp({ moveY: 1 }), STEP);
   assert.equal(p.deathCause, 'fall');
 });
 
@@ -336,7 +394,7 @@ P.........F
 ###...####
 `;
   const lvl = testLevel(map);
-  const p = new Player(lvl, { vest: ridgeline });
+  const p = new Player(lvl);
   p.x = 3 * 8 + 4;
   p.y = 4 * 8 - p.h;
   const frames = (s) => Math.round(s * 60);
@@ -362,7 +420,7 @@ test('player snapshots copy loose rock state, so branches never share it', () =>
 P..F
 #%%#
 `);
-  const p = new Player(lvl, { vest: ridgeline });
+  const p = new Player(lvl);
   const snap = p.snapshot();
   p.loose[0] = -1;
   p.restore(snap);

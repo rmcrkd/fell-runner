@@ -20,7 +20,7 @@ export class Run {
     this.assist = assist;
     this.assisted = isAssisted(assist);
     this.weather = createWeather(seed, difficulty, level.id);
-    this.player = new Player(level, { vest, assist });
+    this.player = new Player(level, { assist });
     this.ghost = ghost ? new GhostPlayback(ghost) : null;
     this.recorder = new GhostRecorder();
     this.frames = 0;
@@ -55,7 +55,7 @@ export class Run {
       this.deathTimer -= STEP;
       if (this.deathTimer <= 0) this.respawn();
     } else {
-      p.update(input, STEP, this.wind, this.weather.grip);
+      p.update(input, STEP, this.wind);
       for (const e of p.events) this.events.push({ type: e });
       if (p.state === ST.DEAD) {
         this.deaths++;
@@ -117,7 +117,7 @@ export class Run {
 
 // Assisted runs get their own leaderboard.
 export function isAssisted(assist) {
-  return !!(assist.infiniteStamina || assist.invincible || (assist.dashMode && assist.dashMode !== 'default') || (assist.speed && assist.speed < 1));
+  return !!(assist.invincible || (assist.dashMode && assist.dashMode !== 'default') || (assist.speed && assist.speed < 1));
 }
 
 export function formatTime(frames, { sign = false } = {}) {

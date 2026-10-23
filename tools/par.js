@@ -1,5 +1,5 @@
 // Reference timings for each fell: the fastest route the solver can find in
-// calm weather (runs, jumps, wall kicks, climbs and dashes, but no super-jump
+// calm weather (runs, jumps, wall kicks, climbs and dashes, but no dash-jump
 // chains), and when it reaches each named place and cairn. Use it to check a
 // level's length and cairn spacing. A skilled human is usually about a third
 // slower than the reference.
@@ -10,25 +10,24 @@
 // It takes half a minute or so per fell. It also prints the target times,
 // and fails if a fell's `reference` in src/levels/index.js is out of date.
 
-import { DIFFICULTIES, VESTS, byId } from '../src/config.js';
+import { DIFFICULTIES } from '../src/config.js';
 import { LEVELS } from '../src/levels/index.js';
 import { Run } from '../src/run.js';
 import { formatTarget, targetsFor } from '../src/targets.js';
 import { solve } from './solver.js';
 
 const only = process.argv[2];
-const vest = byId(VESTS, 'ridgeline');
 const s = (frames) => `${(frames / 60).toFixed(1)}s`.padStart(6);
 
 for (const level of LEVELS.filter((l) => !only || l.id === only)) {
-  const result = solve(level, { vest, allowDash: true, fastest: true });
+  const result = solve(level, { allowDash: true, fastest: true });
   if (!result.solved) {
     console.log(`${level.def.name}: no route found (stuck near column ${Math.floor(result.best.x / 8)})`);
     process.exitCode = 1;
     continue;
   }
   console.log(`${level.def.name}: reference ${s(result.frames).trim()} (${level.cols} x ${level.rows} tiles)`);
-  const run = new Run({ level, vest, difficulty: DIFFICULTIES[0], seed: 0 });
+  const run = new Run({ level, difficulty: DIFFICULTIES[0], seed: 0 });
   const reached = new Set();
   let lastCairn = 0;
   for (const input of result.inputs) {

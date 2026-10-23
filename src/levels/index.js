@@ -1,4 +1,4 @@
-import { TILE } from '../config.js';
+import { PHYS, TILE } from '../config.js';
 import { Level } from '../level.js';
 import blencathra from './blencathra.js';
 import helvellyn from './helvellyn.js';
@@ -19,7 +19,7 @@ export const LEVEL_DEFS = [
     heightM: 868,
     grade: 1,
     summit: 'ring',
-    reference: 39.6,
+    reference: 41.7,
     blurb: 'From Scales, contour round Scales Fell and climb beside Scales Beck to Scales Tarn. Then cross Sharp Edge, one of the most notorious ridges in the Lakes, and its polished Bad Step, before scrambling up Foule Crag to Atkinson Pike and Hallsfell Top.',
     sections: blencathra,
   },
@@ -30,7 +30,7 @@ export const LEVEL_DEFS = [
     heightM: 950,
     grade: 2,
     summit: 'pillar',
-    reference: 40.4,
+    reference: 41.7,
     blurb: 'From Glenridding over Birkhouse Moor to the Hole-in-the-Wall, then out along High Spying How and the crest of Striding Edge, high above Red Tarn. Down-climb the chimney at the end, pass the Gough Memorial on the steep final pull, and cross the summit plateau to the shelter and trig point.',
     sections: helvellyn,
   },
@@ -41,7 +41,7 @@ export const LEVEL_DEFS = [
     heightM: 978,
     grade: 3,
     summit: 'cairn-pillar',
-    reference: 44.9,
+    reference: 46,
     // The boulder fields have gaps you can only cross with a dash
     needsDash: true,
     blurb: "England's highest mountain. From Wasdale Head, ford Lingmell Gill, haul up the stone staircase of Brown Tongue into the boulder-strewn corrie of Hollow Stones, climb the loose scree to Mickledore, then pick across the summit boulder field to the trig point on its great cairn.",
@@ -52,9 +52,10 @@ export const LEVEL_DEFS = [
 function build(def) {
   const { map, places, signs } = stitch(def.sections);
   const level = new Level({ ...def, map, places });
-  // Best times and ghosts are stored under this key, so editing a map
-  // retires the records set on the old one instead of comparing unlike runs.
-  level.key = `${def.id}.${hashString(map).toString(36)}`;
+  // Best times and ghosts are stored under this key, so editing a map, or
+  // the physics, retires the records set before instead of comparing unlike
+  // runs.
+  level.key = `${def.id}.${hashString(map + JSON.stringify(PHYS)).toString(36)}`;
   // Cairns, and the places along the route, take their names from the
   // section they're in.
   level.places = places.map((p) => ({ ...p, x: p.col * TILE }));

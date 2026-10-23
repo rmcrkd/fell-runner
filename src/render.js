@@ -1,4 +1,4 @@
-import { TILE, VIEW_H, VIEW_W } from './config.js';
+import { TILE, VIEW_H, VIEW_W, WIND_CAP } from './config.js';
 import { LOOSE_CRUMBLE, T } from './level.js';
 import { ST } from './player.js';
 import { hashString, mulberry32 } from './rng.js';
@@ -331,9 +331,9 @@ export class Renderer {
   handleEvents(events, player) {
     const cx = player.x + 4;
     const cy = player.y + player.h;
-    // Grit scraped off the crag while wall sliding
-    if (player.state === ST.NORMAL && player.wallSlideDir && player.vy > 30 && Math.random() < 0.3) {
-      this.dust(player.wallSlideDir > 0 ? player.x + player.w : player.x, player.y + player.h - 7 + Math.random() * 6, 1);
+    // Grit scraped off the crag while sliding down it
+    if (player.state === ST.CLIMB && player.vy > 30 && Math.random() < 0.3) {
+      this.dust(player.facing > 0 ? player.x + player.w : player.x, player.y + player.h - 7 + Math.random() * 6, 1);
     }
     for (const e of events) {
       if (e.type === 'land' || e.type === 'jump' || e.type === 'walljump') this.dust(cx, cy, e.type === 'land' ? 5 : 3);
@@ -438,7 +438,6 @@ export class Renderer {
           moving: Math.abs(p.vx) > 5,
           squash: p.squash,
           hair: DASH_COLOURS[Math.min(2, run.assist.dashMode === 'infinite' ? 1 : p.dashes)],
-          tired: p.tired && p.state === ST.CLIMB,
           vx: p.vx + wind * 0.6,
           time,
         });
@@ -877,10 +876,6 @@ export class Renderer {
         px(5, ly + 1, 2, 1, shoes);
       }
     }
-    if (o.tired) {
-      // A sweat drop rather than flashing, so it's safe for photosensitive players
-      px(8, -2, 1, 2, '#9fd8ff');
-    }
   }
 
   drawFog(ctx, time, wind, camY) {
@@ -948,10 +943,16 @@ export class Renderer {
     ps.length = Math.min(ps.length, target);
     const snow = w.precipType === 'snow';
     const sleet = w.precipType === 'sleet';
+    // The wind sets the angle: straight down in still air, and flying
+    // exactly sideways in the strongest wind there is
+    const angle = (Math.min(1, Math.abs(wind) / WIND_CAP) * Math.PI) / 2;
+    const across = Math.sin(angle) * Math.sign(wind);
+    const down = Math.cos(angle);
     for (const p of ps) {
       const isFlake = snow || (sleet && p.r < 0.4);
-      const fall = isFlake ? 35 + p.r * 25 : 260 + p.r * 120;
-      const vx = wind * (isFlake ? 1.6 : 2.4) + (isFlake && !s.reduceMotion ? Math.sin(time * 2 + p.r * 9) * 8 : 0);
+      const speed = isFlake ? 35 + p.r * 25 + Math.abs(wind) * 1.6 : 260 + p.r * 120;
+      const fall = speed * down;
+      const vx = speed * across + (isFlake && !s.reduceMotion ? Math.sin(time * 2 + p.r * 9) * 8 : 0);
       p.x = (((p.x + vx * dt) % VIEW_W) + VIEW_W) % VIEW_W;
       p.y += fall * dt;
       if (p.y > VIEW_H) {
@@ -965,9 +966,8 @@ export class Renderer {
       } else {
         ctx.fillStyle = s.highContrast ? '#9fe6ff' : '#c9d8e6';
         ctx.globalAlpha = 0.55;
-        const len = 5;
-        const k = vx / fall;
-        for (let i = 0; i < len; i++) ctx.fillRect(Math.round(p.x - k * i), Math.round(p.y - i), 1, 1);
+        // A streak five pixels long, along the way it's flying
+        for (let i = 0; i < 5; i++) ctx.fillRect(Math.round(p.x - across * i), Math.round(p.y - down * i), 1, 1);
       }
     }
     ctx.globalAlpha = 1;

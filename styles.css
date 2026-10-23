@@ -237,25 +237,6 @@ body:not(.playing) #game {
   font-style: normal;
 }
 
-.stamina {
-  width: calc(90px * var(--hud));
-  height: calc(10px * var(--hud));
-  border: 2px solid #000;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.45);
-  overflow: hidden;
-}
-
-.stamina span {
-  display: block;
-  height: 100%;
-  background: #8fe388;
-}
-
-.stamina.low span {
-  background: repeating-linear-gradient(45deg, #ffb36b 0 6px, #e0682b 6px 12px);
-}
-
 .banner {
   left: 50%;
   top: 18%;
@@ -525,10 +506,6 @@ body.contrast .rm-ground {
 #touch .acts [data-touch='jump'] {
   grid-column: 2;
   min-height: var(--act);
-}
-
-#touch .acts [data-touch='grab'] {
-  grid-column: 1 / span 2;
 }
 
 #touch .touch-pause {
@@ -820,28 +797,6 @@ legend {
   border: 2px solid #000;
   vertical-align: -0.1em;
   margin-right: 0.35em;
-}
-
-.stats-bars {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 8px;
-  margin-top: 0.5em;
-  font-size: 0.8rem;
-  align-items: center;
-}
-
-.bar {
-  height: 8px;
-  border-radius: 4px;
-  background: #0f171d;
-  overflow: hidden;
-}
-
-.bar span {
-  display: block;
-  height: 100%;
-  background: var(--sky);
 }
 
 .seed-controls {

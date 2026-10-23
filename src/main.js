@@ -46,7 +46,6 @@ const currentDifficulty = () => byId(DIFFICULTIES, setup.difficultyId);
 function assistFromSettings() {
   return {
     speed: Number(settings.speed),
-    infiniteStamina: settings.infiniteStamina,
     dashMode: settings.dashMode,
     invincible: settings.invincible,
   };
@@ -193,9 +192,6 @@ function renderSetup() {
     ),
   );
 
-  const pct = (v) => Math.round(v * 100);
-  const bar = (label, value, max, text) =>
-    `<span aria-hidden="true">${label}</span><span class="bar" aria-hidden="true"><span data-width="${Math.min(100, (value / max) * 100)}%"></span></span><span class="sr-only">${label}: ${text}.</span>`;
   $('#pick-vest').replaceChildren(
     ...VESTS.map((v) =>
       radioCard(
@@ -203,20 +199,13 @@ function renderSetup() {
         v.id,
         v.id === setup.vestId,
         `<span class="card-title"><span class="vest-swatch" data-colour="${v.colour}" aria-hidden="true"></span>${v.name}</span>
-         <span class="card-body">${v.blurb}</span>
-         <span class="stats-bars">
-           ${bar('Speed', v.runMult, 1.1, `${pct(v.runMult)}%`)}
-           ${bar('Stamina', v.staminaMult, 1.5, `${pct(v.staminaMult)}%`)}
-           ${bar('Wind grip', 1 / v.windMult, 1.7, v.windMult > 1 ? 'blown about more' : v.windMult < 1 ? 'steadier in wind' : 'normal')}
-           ${bar('Dashes', v.dashes, 2, `${v.dashes}`)}
-         </span>`,
+         <span class="card-body">${v.blurb}</span>`,
       ),
     ),
   );
 
   // Set through the style property, not style="" in the markup, which the
   // Content-Security-Policy in index.html forbids
-  for (const el of $$('#pick-vest [data-width]')) el.style.width = el.dataset.width;
   for (const el of $$('#pick-vest [data-colour]')) el.style.background = el.dataset.colour;
 
   $('#pick-difficulty').replaceChildren(
@@ -405,8 +394,6 @@ const hud = {
   gustText: $('#hud-gust-text'),
   gustFill: $('#hud-gust-fill'),
   dashes: $('#hud-dashes'),
-  stamina: $('#hud-stamina'),
-  staminaFill: $('#hud-stamina-fill'),
   banner: $('#hud-banner'),
   caption: $('#hud-caption'),
   place: $('#hud-place'),
@@ -493,7 +480,6 @@ function watchReplay({ level, ghost, difficulty, seed, vest, label }) {
   run = new Replay({ level, ghost, difficulty, seed, vest });
   beginView(level, run.weather, vest);
   hud.dashes.hidden = true;
-  hud.stamina.hidden = true;
   hud.assist.hidden = true;
   hud.gust.hidden = true;
   hud.replay.hidden = false;
@@ -706,7 +692,7 @@ function checkSign(x, feet) {
   }
 }
 
-const TOUCH_NAMES = { jump: 'Jump', dash: 'Dash', grab: 'Grab', up: 'up arrow', down: 'down arrow' };
+const TOUCH_NAMES = { jump: 'Jump', dash: 'Dash', up: 'up arrow', down: 'down arrow' };
 
 function controlName(action) {
   if (input.lastDevice === 'touch') return TOUCH_NAMES[action] ?? action;
@@ -719,8 +705,6 @@ function controlName(action) {
 }
 
 function signText(text, wrap) {
-  // With grab set to toggle, one press holds on
-  if (settings.grabMode === 'toggle') text = text.replace('Hold {grab}', 'Press {grab}');
   return text.replace(/\{(\w+)\}/g, (_, action) => wrap(controlName(action)));
 }
 
@@ -737,8 +721,8 @@ function statusText() {
   if (gust) parts.push(`Gust from the ${gust.dir > 0 ? 'west' : 'east'} in ${Math.max(0, gust.in).toFixed(1)} seconds`);
   const p = run.player;
   if (p) {
+    if (p.state === ST.CLIMB) parts.push('Clinging to a crag');
     parts.push(run.assist.dashMode === 'infinite' ? 'Infinite dashes' : `${p.dashes} of ${p.maxDashes} dashes`);
-    if (!run.assist.infiniteStamina) parts.push(`Stamina ${Math.round((Math.max(0, p.stamina) / p.maxStamina) * 100)} percent`);
   }
   if (run.deaths) parts.push(`${run.deaths} fall${run.deaths === 1 ? '' : 's'}`);
   return parts.join('. ') + '.';
@@ -959,13 +943,6 @@ function updateHud(dt) {
       hud.dashes.dataset.state = state;
     }
   }
-  const showStamina = !run.assist.infiniteStamina && (p.state === ST.CLIMB || p.stamina < p.maxStamina);
-  hud.stamina.hidden = !showStamina;
-  if (showStamina) {
-    hud.staminaFill.style.width = `${Math.max(0, p.stamina / p.maxStamina) * 100}%`;
-    hud.stamina.classList.toggle('low', p.tired);
-  }
-
   if (bannerTimer > 0 && (bannerTimer -= dt) <= 0) hud.banner.hidden = true;
   if (splitTimer > 0 && (splitTimer -= dt) <= 0) hud.split.hidden = true;
   if (captionTimer > 0 && (captionTimer -= dt) <= 0) hud.caption.hidden = true;

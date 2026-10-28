@@ -6,7 +6,7 @@
     <!-- Only this site's own files may run or load: no inline scripts or styles, no third parties -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'" />
     <title>Fell Runner</title>
-    <meta name="description" content="A Celeste-style speedrunning platformer over three notorious Lake District fells, with seeded weather, wind physics, ghosts and full accessibility options." />
+    <meta name="description" content="A speedrunning platformer, inspired by Celeste, over three notorious Lake District fells, with seeded weather, wind physics, ghosts and full accessibility options." />
     <meta name="theme-color" content="#1d2a35" />
     <meta property="og:title" content="Fell Runner" />
     <meta property="og:description" content="Speedrun Blencathra, Helvellyn and Scafell Pike through seeded Lakeland weather." />
@@ -48,7 +48,6 @@
         </div>
         <div class="hud-bl">
           <div id="hud-dashes" class="dashes"></div>
-          <div id="hud-stamina" class="stamina" hidden><span id="hud-stamina-fill"></span></div>
         </div>
         <svg id="hud-route" class="route-map" aria-hidden="true"></svg>
         <div id="hud-place" class="place" hidden></div>
@@ -68,7 +67,6 @@
           <button type="button" data-touch="down" aria-label="Down">▼</button>
         </div>
         <div class="acts">
-          <button type="button" data-touch="grab">Grab</button>
           <button type="button" data-touch="dash">Dash</button>
           <button type="button" data-touch="jump">Jump</button>
         </div>
@@ -184,19 +182,12 @@
         <form id="settings-form" class="settings">
           <fieldset>
             <legend>Controls</legend>
-            <div class="field">
-              <span class="label" id="grab-mode-label">Grab button</span>
-              <div class="seg" role="radiogroup" aria-labelledby="grab-mode-label">
-                <label><input type="radio" name="grabMode" value="hold" /> Hold</label>
-                <label><input type="radio" name="grabMode" value="toggle" /> Toggle</label>
-              </div>
-            </div>
             <table class="bindings">
               <caption class="sr-only">Keyboard and gamepad controls</caption>
               <thead><tr><th scope="col">Action</th><th scope="col">Keyboard</th><th scope="col">Gamepad</th></tr></thead>
               <tbody id="bindings-body"></tbody>
             </table>
-            <p class="help">Gamepads work out of the box: stick or d-pad to move, A to jump, X or B to dash, any bumper or trigger to grab, Start to pause, Y to read out your status. Buttons are named for an Xbox-style pad.</p>
+            <p class="help">Gamepads work out of the box: stick or d-pad to move, A to jump, X or B to dash, Start to pause, Y to read out your status. Buttons are named for an Xbox-style pad.</p>
             <button type="button" id="bindings-reset">Reset keys and buttons to defaults</button>
           </fieldset>
 
@@ -214,11 +205,10 @@
                 <option value="0.5">50%</option>
               </select>
             </div>
-            <label class="check"><input type="checkbox" name="infiniteStamina" /> Infinite climbing stamina</label>
             <div class="field">
               <label for="set-dash">Dashes</label>
               <select id="set-dash" name="dashMode">
-                <option value="default">Vest default</option>
+                <option value="default">One</option>
                 <option value="two">Two</option>
                 <option value="infinite">Infinite</option>
               </select>
@@ -276,7 +266,7 @@
             </div>
             <label class="check"><input type="checkbox" name="captions" /> Sound captions</label>
             <label class="check"><input type="checkbox" name="announce" /> Screen reader announcements (places, cairns, results)</label>
-            <p class="help">Press <kbd>I</kbd> (or <kbd>Y</kbd> on a gamepad) during a run to hear your time, where you are, the wind, and your dashes and stamina.</p>
+            <p class="help">Press <kbd>I</kbd> (or <kbd>Y</kbd> on a gamepad) during a run to hear your time, where you are, the wind, and your dashes.</p>
           </fieldset>
 
           <fieldset>
@@ -302,7 +292,6 @@
             <tr><th scope="row">Crouch</th><td>Down arrow or S</td><td>Down on the stick or d-pad</td></tr>
             <tr><th scope="row">Jump</th><td>C, Space or J</td><td>A</td></tr>
             <tr><th scope="row">Dash</th><td>X or K</td><td>X or B</td></tr>
-            <tr><th scope="row">Grab and climb</th><td>Z, L or Left Shift</td><td>Bumpers or triggers</td></tr>
             <tr><th scope="row">Restart</th><td>R</td><td>Back / Select</td></tr>
             <tr><th scope="row">Pause</th><td>Esc or P</td><td>Start</td></tr>
             <tr><th scope="row">Read out status</th><td>I</td><td>Y</td></tr>
@@ -312,19 +301,19 @@
         <ul>
           <li><strong>Jump</strong> higher by holding the button. You can still jump just after running off an edge, and a press just before landing is remembered.</li>
           <li><strong>Crouch</strong> by holding down on the ground. You slide to a stop. You can jump, or dash sideways, and stay crouched, which gets you through gaps too low to stand in. You stand up again as you start to fall, if there's room.</li>
-          <li><strong>Wall jump</strong> by pressing jump next to a crag.</li>
-          <li><strong>Climb</strong> by holding grab against a crag. Climbing uses stamina, which refills when you stand on the ground. A sweat drop means your arms are nearly done.</li>
+          <li><strong>Cling</strong> to a crag just by touching it in mid-air: your grip never tires. Hold up to <strong>climb</strong>, slowly, and over the top; hold down to slide; push away to let go. Beside a crag on the ground, hold up to start climbing.</li>
+          <li><strong>Wall jump</strong> by pressing jump on a crag or just beside one. You always kick away from the face.</li>
           <li><strong>Dash</strong> in any of eight directions. Your buff turns <span class="swatch orange">orange</span> when a dash is ready and <span class="swatch blue">blue</span> once it's spent. Touch the ground to recharge.</li>
-          <li><strong>Kendal mint cake</strong> refills your dash and stamina in mid-air. On Scafell Pike, some gaps can only be crossed by dashing to a mint cake and dashing again.</li>
-          <li><strong>Loose rock</strong> (blocky brown slate) cracks, with a sharp click, as soon as you stand on it or grab it, and falls away a moment later. Keep moving. It settles back after a couple of seconds.</li>
+          <li><strong>Kendal mint cake</strong> refills your dash in mid-air. On Scafell Pike, some gaps can only be crossed by dashing to a mint cake and dashing again.</li>
+          <li><strong>Loose rock</strong> (blocky brown slate) cracks, with a sharp click, as soon as you stand on it or cling to it, and falls away a moment later. Keep moving. It settles back after a couple of seconds.</li>
           <li><strong>Cairns</strong> are checkpoints. Sharp rocks, tarns and big drops send you back to the last one.</li>
           <li><strong>Signposts</strong> on the way up Blencathra explain each move as you pass them. You can turn the tips off in Settings.</li>
         </ul>
         <h3>Weather</h3>
         <ul>
-          <li><strong>Wind</strong> pushes you around, especially in the air. It's gentler down in the valley and full strength on the tops. Watch the wind gauge, streaks and your buff. The <em>gust warning</em> gives about a second's notice.</li>
+          <li><strong>Wind</strong> is a force: it pushes you around, building speed as it goes. On the ground your feet hold you, and in the air you can push back, but the strongest gusts hold you still in mid-air however hard you push. Clinging to a crag, it can't move you at all. It's gentler down in the valley and full strength on the tops. Watch the wind gauge, streaks and your buff. The <em>gust warning</em> gives about a second's notice.</li>
           <li><strong>Shelter:</strong> crags, boulders and walls on the windward side break the wind. The gauge says <em>Sheltered</em> when you're in their lee. Crouch to get right down behind low rocks.</li>
-          <li><strong>Rain and snow</strong> make the rock greasy: you'll slide further when stopping or turning.</li>
+          <li><strong>Rain and snow</strong> show the wind: the harder it blows, the more they fly sideways, and in the strongest wind they don't fall at all.</li>
           <li><strong>Clag</strong> (hill fog) hides the way ahead. You can limit it in Settings.</li>
         </ul>
         <h3>Speedrunning</h3>
@@ -334,7 +323,7 @@
           <li>After a summit, the restart key or button (R, or Back on a gamepad) <strong>runs it again</strong>, just as it restarts a run.</li>
           <li>Your fastest run on each fell and weather setting is saved with a <strong>ghost</strong> to race. Splits at each cairn show whether you're ahead, and the route map at the bottom of the screen shows you (●) and your ghost (○).</li>
           <li><strong>Watch best run</strong> replays your ghost in the weather it ran in. You can also watch any run again from the results screen.</li>
-          <li><strong>Super jump:</strong> jump during a sideways dash on the ground. <strong>Hyper:</strong> a super jump from a crouch, longer and lower. A down-diagonal dash into the ground crouches you, so jump straight after one. <strong>Ultra:</strong> a down-diagonal dash gains a fifth more speed as it lands. <strong>Wall bounce:</strong> dash upwards beside a crag, then jump.</li>
+          <li><strong>Dash jump:</strong> jump during a dash along the ground, and you carry the dash's speed into the air. Crouch first, and you stay low.</li>
         </ul>
         <div class="row-end"><button type="button" class="primary" data-back>Back</button></div>
       </section>
@@ -365,7 +354,7 @@
           <dt>Created by</dt>
           <dd>Ryan McCrickerd, with AI assistance from Claude by Anthropic, through <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code<span class="sr-only"> (opens in a new tab)</span></a></dd>
           <dt>Movement</dt>
-          <dd>Modelled on <a href="https://www.celestegame.com/" target="_blank" rel="noopener">Celeste<span class="sr-only"> (opens in a new tab)</span></a> by Maddy Thorson and Noel Berry, whose <a href="https://github.com/NoelFB/Celeste" target="_blank" rel="noopener">published player controller<span class="sr-only"> (opens in a new tab)</span></a> taught a generation how platformers should feel. Assist mode follows Celeste's lead too.</dd>
+          <dd>Inspired by <a href="https://www.celestegame.com/" target="_blank" rel="noopener">Celeste<span class="sr-only"> (opens in a new tab)</span></a> by Maddy Thorson and Noel Berry, whose <a href="https://github.com/NoelFB/Celeste" target="_blank" rel="noopener">published player controller<span class="sr-only"> (opens in a new tab)</span></a> taught a generation how platformers should feel. Assist mode follows Celeste's lead too.</dd>
           <dt>The real heroes</dt>
           <dd>The volunteers of <a href="https://penrithmrt.org.uk/" target="_blank" rel="noopener">Penrith Mountain Rescue Team<span class="sr-only"> (opens in a new tab)</span></a> and every Lakeland mountain rescue team.</dd>
           <dt>The fells</dt>

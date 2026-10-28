@@ -10,7 +10,7 @@ export default [
     signs: [
       'Hold {jump} to jump higher, or tap it for a hop.',
       'Jump at a crag, then press {jump} again as you touch it to kick off. Kick your way up this gully.',
-      'Hold {grab} against a crag to cling on, and {up} to climb. Climbing tires your arms; standing rests them.',
+      'Touch a crag in mid-air and you cling on. Hold {up} to climb, {down} to slide, or push away to let go.',
       'Loose slate (cracked and brown) gives way just after you land on it. Keep moving!',
       "Press {dash} to dash the way you're pointing, even diagonally. Landing recharges it.",
     ],
@@ -192,7 +192,7 @@ export default [
   // Sharp Edge: rock teeth and notches, greasy slate that gives way, no shelter
   {
     name: 'Sharp Edge',
-    signs: ['Kendal mint cake refills your dash and stamina, even in mid-air.'],
+    signs: ['Kendal mint cake refills your dash, even in mid-air.'],
     map: `
 ....................................................*...................................................
 ........................................................................................................

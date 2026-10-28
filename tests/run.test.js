@@ -27,7 +27,8 @@ test('the clock starts on the first input', () => {
 
 test('falling sends you back to the start, then a cairn becomes the checkpoint', () => {
   const run = new Run(base);
-  for (let i = 0; i < 200 && run.deaths === 0; i++) run.update(inp({ moveX: 1 }));
+  // Into the gap, sliding down the far side rather than clinging to it
+  for (let i = 0; i < 200 && run.deaths === 0; i++) run.update(inp({ moveX: 1, moveY: run.player.onGround ? 0 : 1 }));
   assert.equal(run.deaths, 1);
   for (let i = 0; i < 40; i++) run.update(inp());
   assert.equal(run.player.x, level.start.x);
@@ -50,7 +51,7 @@ test('reaching the trig point finishes the run', () => {
 test('assist options mark the run as assisted', () => {
   assert.equal(new Run(base).assisted, false);
   assert.equal(new Run({ ...base, assist: { speed: 0.7 } }).assisted, true);
-  assert.equal(new Run({ ...base, assist: { infiniteStamina: true } }).assisted, true);
+  assert.equal(new Run({ ...base, assist: { invincible: true } }).assisted, true);
   assert.equal(new Run({ ...base, assist: { dashMode: 'default', speed: 1 } }).assisted, false);
 });
 

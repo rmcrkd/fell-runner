@@ -4,8 +4,8 @@ import { TILE } from './config.js';
 //
 //   #  rock            B  boulder (solid)      =  stone wall (solid)
 //   -  ledge you can jump up through          ^  sharp rocks (deadly)
-//   ~  tarn water (deadly, and very cold)      *  Kendal mint cake: refills dash and stamina
-//   %  loose rock: gives way just after you stand on or grab it, then settles back
+//   ~  tarn water (deadly, and very cold)      *  Kendal mint cake: refills your dash
+//   %  loose rock: gives way just after you stand on or cling to it, then settles back
 //   C  cairn checkpoint                        P  start
 //   F  summit marker (finish)                  .  or space: air
 //   h  a Herdwick sheep (scenery only)        ?  a signpost with a tip (scenery only)

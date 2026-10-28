@@ -18,10 +18,10 @@ import { Player, ST } from '../src/player.js';
 import { CAKE_RESPAWN_FRAMES } from '../src/run.js';
 
 const MAX_FRAMES = 170;
-const NEUTRAL = Object.freeze({ moveX: 0, moveY: 0, jump: false, jumpPressed: false, dashPressed: false, grab: false });
+const NEUTRAL = Object.freeze({ moveX: 0, moveY: 0, jump: false, jumpPressed: false, dashPressed: false });
 
-function inputs(moveX = 0, moveY = 0, jump = false, jumpPressed = false, dashPressed = false, grab = false) {
-  return { moveX, moveY, jump, jumpPressed, dashPressed, grab };
+function inputs(moveX = 0, moveY = 0, jump = false, jumpPressed = false, dashPressed = false) {
+  return { moveX, moveY, jump, jumpPressed, dashPressed };
 }
 
 // Each script is (frame, player, memo) => input. Scripts end when the player
@@ -58,6 +58,7 @@ function buildScripts({ allowDash, fastest, tech }) {
     }
     if (d === 0) continue;
     // Wall kicks: hold toward a wall and kick off it whenever touching it.
+    // Grip is always on, so the runner may be hanging on it by then.
     scripts.push({
       name: `wallkick${d}`,
       fn: (f, p, memo) => {
@@ -82,14 +83,11 @@ function buildScripts({ allowDash, fastest, tech }) {
         return inputs(memo.dir, 0, true, touching);
       },
     });
-    // Climb: jump toward the face, grab, climb, hop over, climb-jump when tired.
+    // Climb: (jump and) hold toward the face and up, and hop over the top.
     for (const jumpFirst of [false, true]) {
       scripts.push({
         name: `climb${d}${jumpFirst ? 'j' : ''}`,
-        fn: (f, p) => {
-          const pressJump = (jumpFirst && f === 0) || (p.state === ST.CLIMB && p.stamina < 32 && p.stamina > 20 && !p.slipCheck());
-          return inputs(d, -1, pressJump || (jumpFirst && f < 12), pressJump, false, true);
-        },
+        fn: (f) => inputs(d, -1, jumpFirst && f < 12, jumpFirst && f === 0),
       });
     }
     if (!allowDash) continue;
@@ -104,15 +102,15 @@ function buildScripts({ allowDash, fastest, tech }) {
     for (const at of [8, 16]) {
       scripts.push({ name: `updash${d}@${at}`, fn: (f) => inputs(f === at ? 0 : d, f === at ? -1 : 0, f < 12, f === 0, f === at) });
     }
-    // Two dashes in a row, for vests and assists that carry a spare, or a
-    // mint cake picked up in between: diagonal up, then sideways.
+    // Two dashes in a row, for assists that carry a spare, or a mint cake
+    // picked up in between: diagonal up, then sideways.
     scripts.push({
       name: `dash2${d}`,
       fn: (f) => inputs(d, f >= 6 && f < 15 ? -1 : 0, f < 12, f === 0, f === 6 || f === 22),
     });
     if (tech) {
-      // Ground dash and super jump, the bread and butter of fast routes.
-      scripts.push({ name: `super${d}`, fn: (f) => inputs(d, 0, f >= 3 && f < 14, f === 3, f === 0) });
+      // Ground dash, then jump while still at dash speed: a long jump.
+      scripts.push({ name: `dashjump${d}`, fn: (f) => inputs(d, 0, f >= 3 && f < 14, f === 3, f === 0) });
     }
   }
   return scripts;
@@ -161,7 +159,7 @@ class Heap {
 // `wind` may be a constant or a function of time in seconds, such as
 // weather.windAt, in which case each branch sees the wind at its true time.
 // `assist` is passed to the Player (for example { dashMode: 'two' }).
-export function solve(level, { vest, wind = 0, grip = 1, allowDash = false, fastest = false, tech = false, assist = {}, maxNodes = fastest ? 60000 : 20000 } = {}) {
+export function solve(level, { wind = 0, allowDash = false, fastest = false, tech = false, assist = {}, maxNodes = fastest ? 60000 : 20000 } = {}) {
   const windAt = typeof wind === 'function' ? wind : () => wind;
   const scripts = buildScripts({ allowDash, fastest, tech });
   const seen = new Set();
@@ -171,7 +169,7 @@ export function solve(level, { vest, wind = 0, grip = 1, allowDash = false, fast
   // In fastest mode a landing at speed is a different state from a standstill.
   const key = (p) => (fastest ? `${p.x >> 3},${p.y + p.h},${Math.round(p.vx / 60)},${p.dashes}` : `${p.x >> 2},${p.y + p.h}`);
 
-  const player = new Player(level, { vest, assist });
+  const player = new Player(level, { assist });
   const box = { x: 0, y: 0, w: player.w, h: player.h };
   const cakeReady = new Int32Array(level.cakes.length);
 
@@ -217,7 +215,7 @@ export function solve(level, { vest, wind = 0, grip = 1, allowDash = false, fast
         const inp = landed ? NEUTRAL : script.fn(f, player, memo);
         log.push(inp);
         const frame = node.frame + f;
-        player.update(inp, STEP, windAt(frame * STEP), grip);
+        player.update(inp, STEP, windAt(frame * STEP));
         if (player.state === ST.DEAD) break;
         box.x = player.x;
         box.y = player.y;
